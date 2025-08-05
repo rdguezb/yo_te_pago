@@ -1,0 +1,28 @@
+abstract class AppFormLabels {
+
+  static const username = 'Usuario';
+  static const password = 'Contraseña';
+  static const customer = 'Nombre del Cliente';
+  static const amount = 'Importe';
+  static const currency = 'Moneda de Pago';
+  static const paymentCurrency = 'Seleccione una moneda';
+  static const code = 'Código';
+  static const date = 'Fecha';
+  static const time = 'Hora';
+  static const name = 'Nombre';
+  static const lastName = 'Apellidos';
+
+}
+
+abstract class AppButtons {
+
+  static const save = 'Guardar';
+  static const update = 'Actualizar';
+  static const submit = 'Enviar';
+  static const cancel = 'Cancelar';
+  static const retry = 'Reintentar';
+  static const delete = 'Eliminar';
+  static const confirm = 'Confirmar';
+
+}
+
