@@ -1,5 +1,6 @@
-import 'package:isar/isar.dart';
+import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart';
 
 import 'package:yo_te_pago/business/domain/repositories/ibase_repository.dart';
 import 'package:yo_te_pago/business/exceptions/local_storage_exceptions.dart';
@@ -7,9 +8,8 @@ import 'package:yo_te_pago/infrastructure/models/pocos/app_data_poco.dart';
 
 
 abstract class BaseRepository<T, TPoco> extends IBaseRepository<T> {
-  late Future<Isar> db;
+  late Future<Database> db;
 
-  Future<IsarCollection<TPoco>> getPocoCollection();
   T toModel(TPoco poco);
   TPoco toPoco(T model);
 
@@ -17,27 +17,29 @@ abstract class BaseRepository<T, TPoco> extends IBaseRepository<T> {
     db = openDB();
   }
 
+  String get tableName;
+  String get createTableSQL;
+
   Future<String> _getDbPath() async {
     final dir = await getApplicationDocumentsDirectory();
 
-    return dir.path;
+    return join(dir.path, 'yotepago_database.db');
   }
 
-  Future<Isar> openDB() async {
+  Future<Database> openDB() async {
     try {
-      if (Isar.instanceNames.isEmpty) {
-        final path = await _getDbPath();
+      final path = await _getDbPath();
 
-        return await Isar.open(
-            [AppDataPocoSchema],
-            directory: path,
-            inspector: true);
-      }
-
-      return Future.value(Isar.getInstance());
+      return await openDatabase(
+        path,
+        version: 1,
+        onCreate: (db, version) async {
+          await db.execute(createTableSQL);
+        },
+      );
     } catch (e, stackTrace) {
       throw LocalStorageException(
-        message: 'Unexpected error when open database',
+        message: 'Unexpected error when opening database',
         innerException: e,
         stackTrace: stackTrace,
       );
@@ -47,13 +49,11 @@ abstract class BaseRepository<T, TPoco> extends IBaseRepository<T> {
   @override
   Future<List<T>> getAll() async {
     try {
-      final collection = await getPocoCollection();
-      final result = await collection
-          .where()
-          .findAll();
+      final database = await db;
+      final List<Map<String, dynamic>> result = await database.query(tableName);
 
-      return result.map(toModel).toList();
-    } on IsarError catch (e, stackTrace) {
+      return result.map((map) => toModel(AppDataPoco.fromMap(map) as TPoco)).toList();
+    } on DatabaseException catch (e, stackTrace) {
       throw LocalStorageException.databaseError(
         message: 'Failed to get all items',
         innerException: e,
@@ -71,14 +71,20 @@ abstract class BaseRepository<T, TPoco> extends IBaseRepository<T> {
   @override
   Future<T?> getById(int id) async {
     try {
-      final collection = await getPocoCollection();
-      final result = await collection.get(id);
-      if (result == null) {
+      final database = await db;
+      final List<Map<String, dynamic>> result = await database.query(
+        tableName,
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+
+      if (result.isEmpty) {
         return null;
       }
 
-      return toModel(result);
-    } on IsarError catch (e, stackTrace) {
+      // Obtiene el primer resultado y lo convierte a Model.
+      return toModel(AppDataPoco.fromMap(result.first) as TPoco);
+    } on DatabaseException catch (e, stackTrace) {
       throw LocalStorageException.databaseError(
         message: 'Failed to get item by id',
         innerException: e,
@@ -96,14 +102,16 @@ abstract class BaseRepository<T, TPoco> extends IBaseRepository<T> {
   @override
   Future<T?> add(T item) async {
     try {
-      final isar = await db;
-      final collection = await getPocoCollection();
-      final result = await isar.writeTxn(() async {
-        return await collection.put(toPoco(item));
-      });
+      final database = await db;
+      final poco = toPoco(item) as AppDataPoco;
+      final int id = await database.insert(
+        tableName,
+        poco.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
 
-      return getById(result);
-    } on IsarError catch (e, stackTrace) {
+      return getById(id);
+    } on DatabaseException catch (e, stackTrace) {
       throw LocalStorageException.databaseError(
         message: 'Failed to add item',
         innerException: e,
@@ -121,12 +129,15 @@ abstract class BaseRepository<T, TPoco> extends IBaseRepository<T> {
   @override
   Future<void> edit(T item) async {
     try {
-      final collection = await getPocoCollection();
-      final isar = await db;
-      await isar.writeTxn(() async {
-        await collection.put(toPoco(item));
-      });
-    } on IsarError catch (e, stackTrace) {
+      final database = await db;
+      final poco = toPoco(item) as AppDataPoco;
+      await database.update(
+        tableName,
+        poco.toMap(),
+        where: 'id = ?',
+        whereArgs: [poco.id],
+      );
+    } on DatabaseException catch (e, stackTrace) {
       throw LocalStorageException.databaseError(
         message: 'Failed to edit item',
         innerException: e,
@@ -144,12 +155,13 @@ abstract class BaseRepository<T, TPoco> extends IBaseRepository<T> {
   @override
   Future<void> delete(int id) async {
     try {
-      final collection = await getPocoCollection();
-      final isar = await db;
-      await isar.writeTxn(() async {
-        await collection.delete(id);
-      });
-    } on IsarError catch (e, stackTrace) {
+      final database = await db;
+      await database.delete(
+        tableName,
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    } on DatabaseException catch (e, stackTrace) {
       throw LocalStorageException.databaseError(
         message: 'Failed to delete item',
         innerException: e,
@@ -167,22 +179,17 @@ abstract class BaseRepository<T, TPoco> extends IBaseRepository<T> {
   @override
   Future<void> deleteAll() async {
     try {
-      final collection = await getPocoCollection();
-      final isar = await db;
-      await isar.writeTxn(() async {
-        await collection
-            .where()
-            .deleteAll();
-      });
-    } on IsarError catch (e, stackTrace) {
+      final database = await db;
+      await database.delete(tableName);
+    } on DatabaseException catch (e, stackTrace) {
       throw LocalStorageException.databaseError(
-        message: 'Failed to delete item',
+        message: 'Failed to delete all items',
         innerException: e,
         stackTrace: stackTrace,
       );
     } catch (e, stackTrace) {
       throw LocalStorageException(
-        message: 'Unexpected error deleting item',
+        message: 'Unexpected error deleting all items',
         innerException: e,
         stackTrace: stackTrace,
       );

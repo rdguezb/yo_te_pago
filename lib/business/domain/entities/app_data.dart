@@ -1,6 +1,6 @@
 class AppData {
 
-  int? id;
+  final int? id;
   final String keyName;
   final String valueStr;
   final String valueType;
