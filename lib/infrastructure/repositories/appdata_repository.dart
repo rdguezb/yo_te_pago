@@ -17,6 +17,7 @@ class AppDataRepository extends BaseRepository<AppData, AppDataPoco> implements 
   @override
   String get createTableSQL => '''
     CREATE TABLE $tableName(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       keyName TEXT UNIQUE,
       valueStr TEXT,
       valueType TEXT
