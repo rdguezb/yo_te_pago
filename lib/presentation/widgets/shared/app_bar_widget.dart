@@ -16,8 +16,6 @@ class CustomAppBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-
-    final colors = Theme.of(context).colorScheme;
     final styles = Theme.of(context).textTheme;
     final odooService = ref.watch(odooServiceProvider);
     final String userName = odooService.partnerName;
@@ -28,10 +26,11 @@ class CustomAppBar extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(
-            Icons.language_sharp,
-            color: colors.primary,
-            size: 40),
+          Image.asset(
+            'assets/icons/icon.png',
+            width: 60,
+            height: 60,
+          ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,

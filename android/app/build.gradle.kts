@@ -40,27 +40,27 @@ android {
     }
 
 //    esto no va si es debug
-    signingConfigs {
-        create("releaseConfig") {
-            if (keystoreProperties.containsKey("storeFile")) {
-                storeFile = file(keystoreProperties.getProperty("storeFile"))
-                storePassword = keystoreProperties.getProperty("storePassword")
-                keyAlias = keystoreProperties.getProperty("keyAlias")
-                keyPassword = keystoreProperties.getProperty("keyPassword")
-            } else {
-                throw GradleException("Key.properties file not found or incomplete.")
-            }
-        }
-    }
+//    signingConfigs {
+//        create("releaseConfig") {
+//            if (keystoreProperties.containsKey("storeFile")) {
+//                storeFile = file(keystoreProperties.getProperty("storeFile"))
+//                storePassword = keystoreProperties.getProperty("storePassword")
+//                keyAlias = keystoreProperties.getProperty("keyAlias")
+//                keyPassword = keystoreProperties.getProperty("keyPassword")
+//            } else {
+//                throw GradleException("Key.properties file not found or incomplete.")
+//            }
+//        }
+//    }
 
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
-//             signingConfig = signingConfigs.getByName("debug")
-            signingConfig = signingConfigs.getByName("releaseConfig")
-            isShrinkResources = true
-            isMinifyEnabled = true
+             signingConfig = signingConfigs.getByName("debug")
+//            signingConfig = signingConfigs.getByName("releaseConfig")
+//            isShrinkResources = true
+//            isMinifyEnabled = true
         }
     }
 

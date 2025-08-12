@@ -3,8 +3,7 @@
 *.log
 *.pyc
 *.swp
-android/key.properties
-*.env
+/.env
 .DS_Store
 .atom/
 .build/
@@ -13,6 +12,7 @@ android/key.properties
 .svn/
 .swiftpm/
 migrate_working_dir/
+android/key.properties
 
 # IntelliJ related
 *.iml

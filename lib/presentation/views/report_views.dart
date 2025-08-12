@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
+import 'package:yo_te_pago/business/config/constants/validation_messages.dart';
 import 'package:yo_te_pago/business/providers/auth_notifier.dart';
 import 'package:yo_te_pago/business/providers/balance_provider.dart';
 import 'package:yo_te_pago/presentation/widgets/reports/balance_tile.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:yo_te_pago/presentation/widgets/shared/fancy_text.dart';
 
 
 class ReportView extends ConsumerStatefulWidget {
@@ -70,7 +72,7 @@ class _ReportViewState extends ConsumerState<ReportView> {
     if (!authState.isLoggedIn || balancesState.isLoading ) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (balancesState.errorMessage != null && balancesState.balances.isEmpty) {
+    if (balancesState.errorMessage != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -91,6 +93,68 @@ class _ReportViewState extends ConsumerState<ReportView> {
       );
     }
 
+    final Widget body;
+
+    if (balancesState.balances.isEmpty) {
+      body = Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Center(
+                child: Icon(
+                  Icons.query_stats,
+                  color: colors.primary,
+                  size: 60,
+                ),
+              ),
+            ),
+            const SliverPadding(
+              padding: EdgeInsets.symmetric(vertical: 16.0),
+            ),
+            SliverToBoxAdapter(
+              child: FancyText(
+                messageText: AppStates.noBalance,
+                iconData: Icons.sentiment_dissatisfied_rounded,
+                color: colors.error,
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      body = Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Center(
+                child: Icon(
+                  Icons.query_stats,
+                  color: colors.primary,
+                  size: 60,
+                ),
+              ),
+            ),
+            const SliverPadding(
+              padding: EdgeInsets.symmetric(vertical: 16.0),
+            ),
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                  final balance = balancesState.balances[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: BalanceTile(balance: balance),
+                  );
+                },
+                childCount: balancesState.balances.length,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -98,33 +162,7 @@ class _ReportViewState extends ConsumerState<ReportView> {
         centerTitle: true
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: Center(
-                  child: Icon(
-                    Icons.query_stats,
-                    color: colors.primary,
-                    size: 60)
-                )),
-              const SliverPadding(
-                padding: EdgeInsets.symmetric(vertical: 16.0)
-              ),
-              SliverList(
-                delegate: SliverChildBuilderDelegate((context, index) {
-                    final balance = balancesState.balances[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: BalanceTile(balance: balance));
-                  },
-                  childCount: balancesState.balances.length
-                )
-              )
-            ]
-          )
-        )
+        child: body
       )
     );
   }

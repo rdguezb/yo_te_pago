@@ -220,9 +220,6 @@ class OdooService extends IBaseService {
       final List<BalanceDto> balances = await _handleResponse<BalanceDto>(
           response,
           (json) => BalanceDto.fromJson(json));
-      if (balances.isEmpty) {
-        throw Exception(AppStates.noBalance);
-      }
 
       return balances
           .map((dto) => dto.toModel())
@@ -241,9 +238,6 @@ class OdooService extends IBaseService {
       final List<CurrencyDto> currencies = await _handleResponse<CurrencyDto>(
         response,
         (json) => CurrencyDto.fromJson(json));
-      if (currencies.isEmpty) {
-        throw Exception(AppStates.noCurrencies);
-      }
 
       return currencies
           .map((dto) => dto.toModel())
@@ -268,9 +262,6 @@ class OdooService extends IBaseService {
       final List<RemittanceDto> remittances = await _handleResponse<RemittanceDto>(
           response,
           (json) => RemittanceDto.fromJson(json));
-      if (remittances.isEmpty) {
-        throw Exception(AppStates.noRemittance);
-      }
 
       return remittances
           .map((dto) => dto.toModel())

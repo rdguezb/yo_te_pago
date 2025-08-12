@@ -72,7 +72,8 @@ class DashboardViewState extends ConsumerState<DashboardView> {
     if (!authState.isLoggedIn || currenciesState.isLoading || remittancesState.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (currenciesState.errorMessage != null && currenciesState.currencies.isEmpty) {
+
+    if (currenciesState.errorMessage != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -92,7 +93,7 @@ class DashboardViewState extends ConsumerState<DashboardView> {
         ),
       );
     }
-    if (remittancesState.errorMessage != null && remittancesState.remittances.isEmpty) {
+    if (remittancesState.errorMessage != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

@@ -370,7 +370,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
 
           if (isLoadingCurrencies)
             const Center(child: CircularProgressIndicator())
-          else if (currencyErrorMessage != null && currencies.isEmpty)
+          else if (currencyErrorMessage != null)
             Column(
               children: [
                 Text(
