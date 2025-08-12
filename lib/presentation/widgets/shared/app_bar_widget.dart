@@ -27,7 +27,7 @@ class CustomAppBar extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Image.asset(
-            'assets/icons/icon.png',
+            'assets/icons/icon-app.png',
             width: 60,
             height: 60,
           ),
