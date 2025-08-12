@@ -95,7 +95,7 @@ class OdooSessionNotifier extends StateNotifier<OdooSessionState> {
       state = state.copyWith(
         isAuthenticated: false,
         isLoading: false,
-        errorMessage: 'Error al restablecer sesión: $e',
+        errorMessage: 'Error al restablecer sesión',
       );
     }
   }
@@ -139,7 +139,7 @@ class OdooSessionNotifier extends StateNotifier<OdooSessionState> {
       state = state.copyWith(
         isAuthenticated: false,
         isLoading: false,
-        errorMessage: 'Error al iniciar sesión: $e',
+        errorMessage: 'Error al iniciar sesión',
       );
     }
   }

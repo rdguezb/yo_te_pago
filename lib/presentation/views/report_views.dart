@@ -37,7 +37,7 @@ class _ReportViewState extends ConsumerState<ReportView> {
       if (mounted) {
         showCustomSnackBar(
           context: context,
-          message: 'Error al cargar datos del Balance: ${e.toString()}',
+          message: 'Error al cargar datos del Balance',
           type: SnackBarType.error,
         );
       }

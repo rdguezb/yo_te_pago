@@ -66,7 +66,7 @@ class CurrencyNotifier extends StateNotifier<CurrencyState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Error al cargar monedas: ${e.toString()}'
+        errorMessage: 'Error al cargar monedas'
       );
     }
   }

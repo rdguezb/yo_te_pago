@@ -87,7 +87,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
       if (mounted) {
         showCustomSnackBar(
           context: context,
-          message: 'Error al cargar datos: ${e.toString()}',
+          message: 'Error al cargar datos',
           type: SnackBarType.error,
         );
       }
@@ -137,7 +137,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
       }
       showCustomSnackBar(
           context: context,
-          message: 'Error: ${e.toString()}',
+          message: AppStates.registerFailure,
           type: SnackBarType.error
       );
       return false;
@@ -216,7 +216,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
                   }
                   showCustomSnackBar(
                     context: context,
-                    message: 'Error: ${e.toString()}',
+                    message: AppStates.registerFailure,
                     type: SnackBarType.error,
                   );
                 }

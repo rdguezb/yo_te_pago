@@ -145,7 +145,7 @@ class _RemittanceTile extends ConsumerWidget {
       }
       showCustomSnackBar(
         context: context,
-        message: 'Error al marcar como pagada: ${e.toString()}',
+        message: 'Error al marcar como pagada',
         type: SnackBarType.error,
       );
     }
@@ -193,7 +193,7 @@ class _RemittanceTile extends ConsumerWidget {
       }
       showCustomSnackBar(
         context: context,
-        message: 'Error al eliminar remesa: ${e.toString()}',
+        message: 'Error al eliminar remesa',
         type: SnackBarType.error,
       );
     }

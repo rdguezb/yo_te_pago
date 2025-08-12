@@ -28,7 +28,7 @@ class AppDataNotifier extends StateNotifier<List<AppData>> {
       final result = await fetchAllAppDatas();
       state = result;
     } catch (e, st) {
-      throw Exception('Error al cargar AppDatas: $e\n$st');
+      throw Exception('Error al cargar AppDatas');
     } finally {
       isLoading = false;
     }
@@ -43,7 +43,7 @@ class AppDataNotifier extends StateNotifier<List<AppData>> {
     try {
       result = await appDataRepository.getByKey(key);
     } catch (e, st) {
-      throw Exception('Error al obtener AppData por clave $key: $e\n$st');
+      throw Exception('Error al obtener AppData por clave');
     } finally {
       isLoading = false;
     }

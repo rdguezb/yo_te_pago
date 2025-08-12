@@ -67,7 +67,7 @@ class RemittanceNotifier extends StateNotifier<RemittanceState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Error al cargar remesas: $e'
+        errorMessage: 'Error al cargar remesas'
       );
     }
   }

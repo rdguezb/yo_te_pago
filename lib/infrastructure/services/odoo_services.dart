@@ -53,7 +53,7 @@ class OdooService extends IBaseService {
         params['kwargs'] = kwargs;
         bodyParams['params'] = params;
       } catch (e) {
-        throw Exception('Error interno al preparar el contexto de la compañía: $e');
+        throw Exception('Error interno al preparar el contexto de la compañía');
       }
     }
     final requestBody = jsonEncode(bodyParams ?? {});
@@ -184,9 +184,9 @@ class OdooService extends IBaseService {
         throw Exception('Fallo la autenticación con código: ${response.statusCode} - ${response.body}');
       }
     } on http.ClientException catch (e) {
-      throw Exception('Error de red durante la autenticación: ${e.message}');
+      throw Exception('Error de red durante la autenticación');
     } catch (e) {
-      throw Exception('Error desconocido durante la autenticación: $e');
+      throw Exception('Error desconocido durante la autenticación');
     }
   }
 
@@ -207,7 +207,7 @@ class OdooService extends IBaseService {
         throw Exception('OdooService: Error al cerrar sesión: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      throw Exception('OdooService: Error desconocido al cerrar sesión: $e');
+      throw Exception('OdooService: Error desconocido al cerrar sesión');
     }
   }
 
@@ -225,7 +225,7 @@ class OdooService extends IBaseService {
           .map((dto) => dto.toModel())
           .toList();
     } catch (e) {
-      throw Exception('Error al obtener saldos: $e');
+      throw Exception('Error al obtener saldos');
     }
   }
 
@@ -243,7 +243,7 @@ class OdooService extends IBaseService {
           .map((dto) => dto.toModel())
           .toList();
     } catch (e) {
-      throw Exception('Error al obtener monedas: $e');
+      throw Exception('Error al obtener monedas');
     }
   }
 
@@ -267,7 +267,7 @@ class OdooService extends IBaseService {
           .map((dto) => dto.toModel())
           .toList();
     } catch (e) {
-      throw Exception('Error al obtener remesas: $e');
+      throw Exception('Error al obtener remesas');
     }
   }
 
@@ -301,7 +301,7 @@ class OdooService extends IBaseService {
 
       return createdRemittances.first;
     } catch (e) {
-      throw Exception('Error al añadir remesa: $e');
+      throw Exception('Error al añadir remesa');
     }
   }
 
@@ -337,7 +337,7 @@ class OdooService extends IBaseService {
 
       return success;
     } catch (e) {
-      throw Exception('Error al editar remesa: $e');
+      throw Exception('Error al editar remesa');
     }
   }
 
@@ -370,7 +370,7 @@ class OdooService extends IBaseService {
 
       return success;
     } catch (e) {
-      throw Exception('Error al cambiar a pagada remesa: $e');
+      throw Exception('Error al cambiar a pagada remesa');
     }
   }
 
@@ -403,7 +403,7 @@ class OdooService extends IBaseService {
 
       return success;
     } catch (e) {
-      throw Exception('Error al eliminar remesa: $e');
+      throw Exception('Error al eliminar remesa');
     }
   }
 
@@ -443,7 +443,7 @@ class OdooService extends IBaseService {
 
       return success;
     } catch (e) {
-      throw Exception('Error al editar usuario: $e');
+      throw Exception('Error al editar usuario');
     }
   }
 
@@ -483,7 +483,7 @@ class OdooService extends IBaseService {
 
       return success;
     } catch (e) {
-      throw Exception('Error al editar cliente: $e');
+      throw Exception('Error al editar cliente');
     }
   }
 
@@ -561,7 +561,7 @@ class OdooService extends IBaseService {
 
       return fetchedCompanies;
     } catch (e) {
-      throw Exception('Error al obtener compañías permitidas: $e');
+      throw Exception('Error al obtener compañías permitidas');
     }
   }
 

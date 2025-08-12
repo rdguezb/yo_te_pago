@@ -86,7 +86,7 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
       }
       showCustomSnackBar(
         context: context,
-        message: '${AppStates.registerFailure}\nError: $e',
+        message: AppStates.registerFailure,
         type: SnackBarType.error
       );
 
@@ -154,7 +154,7 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
                     }
                     showCustomSnackBar(
                       context: context,
-                      message: 'Error: ${e.toString()}',
+                      message: AppStates.registerFailure,
                       type: SnackBarType.error,
                     );
                   }

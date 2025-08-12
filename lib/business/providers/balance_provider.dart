@@ -67,7 +67,7 @@ class BalanceNotifier extends StateNotifier<BalanceState> {
     } catch (e) {
       state = state.copyWith(
           isLoading: false,
-          errorMessage: 'Error al cargar balances: $e'
+          errorMessage: 'Error al cargar balances'
       );
     }
   }

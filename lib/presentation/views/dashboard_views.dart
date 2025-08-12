@@ -38,7 +38,7 @@ class DashboardViewState extends ConsumerState<DashboardView> {
       if (mounted) {
         showCustomSnackBar(
           context: context,
-          message: 'Error al cargar datos del Dashboard: ${e.toString()}',
+          message: 'Error al cargar datos del Dashboard',
           type: SnackBarType.error,
         );
       }

@@ -438,7 +438,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
                   }
                   showCustomSnackBar(
                     context: context,
-                    message: 'Error: ${e.toString()}',
+                    message: AppStates.registerFailure,
                     type: SnackBarType.error
                   );
                 }
