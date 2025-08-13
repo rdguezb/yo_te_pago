@@ -21,11 +21,11 @@ dependencies:
   path_provider: ^2.1.5
   sqflite: ^2.4.2
   path: ^1.9.1
+  flutter_native_splash: ^2.4.6
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
   flutter_lints: ^5.0.0
 
 flutter:
@@ -45,3 +45,8 @@ flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
   image_path: "assets/icons/icon.png"
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: assets/icons/icon.png
+  branding_mode: "center"
