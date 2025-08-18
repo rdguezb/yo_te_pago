@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:yo_te_pago/business/config/constants/api_const.dart';
-import 'package:yo_te_pago/business/config/constants/validation_messages.dart';
+import 'package:yo_te_pago/business/config/constants/app_auth_states.dart';
 import 'package:yo_te_pago/business/domain/repositories/iappdata_repository.dart';
 import 'package:yo_te_pago/infrastructure/models/odoo_auth_result.dart';
 import 'package:yo_te_pago/infrastructure/repositories/appdata_repository.dart';
@@ -63,7 +63,7 @@ class OdooSessionNotifier extends StateNotifier<OdooSessionState> {
         state = state.copyWith(
           isAuthenticated: false,
           isLoading: false,
-          errorMessage: AppStates.noCredentialsFound,
+          errorMessage: AppAuthMessages.errorNoCredentialsFound,
         );
         return;
       }
@@ -86,7 +86,7 @@ class OdooSessionNotifier extends StateNotifier<OdooSessionState> {
         state = state.copyWith(
           isAuthenticated: false,
           isLoading: false,
-          errorMessage: AppStates.failedToRestoreSession,
+          errorMessage:AppAuthMessages.errorFailedToRestoreSession,
         );
       }
 
@@ -110,7 +110,7 @@ class OdooSessionNotifier extends StateNotifier<OdooSessionState> {
       final passwordData = await _appDataRepository.getByKey(ApiConfig.keyPass);
 
       if (userData == null || passwordData == null || userData.valueStr.isEmpty || passwordData.valueStr.isEmpty) {
-        throw Exception(AppStates.noCredentialsConfig);
+        throw Exception(AppAuthMessages.errorNoCredentialsFound);
       }
       final OdooService odooService = OdooService();
       final bool authSuccess = await odooService.authenticate(
@@ -130,7 +130,7 @@ class OdooSessionNotifier extends StateNotifier<OdooSessionState> {
         state = state.copyWith(
           isAuthenticated: false,
           isLoading: false,
-          errorMessage: AppStates.failedToLogin,
+          errorMessage: AppAuthMessages.errorFailedToLogin,
         );
       }
 
@@ -181,7 +181,7 @@ final odooServiceProvider = Provider<OdooService>((ref) {
   final odooSessionNotifier = ref.read(odooSessionNotifierProvider.notifier);
 
   if (!odooSessionState.isAuthenticated || odooSessionNotifier.odooService == null) {
-    throw Exception(AppStates.noSessionOrProcess);
+    throw Exception(AppAuthMessages.errorNoSessionOrProcess);
   }
 
   return odooSessionNotifier.odooService!;

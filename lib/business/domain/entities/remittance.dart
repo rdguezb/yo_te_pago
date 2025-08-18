@@ -8,6 +8,7 @@ class Remittance {
   double amount;
   DateTime createdAt;
   int currencyId;
+  int bankAccountId;
   double rate;
   String? code;
   String? state;
@@ -20,6 +21,7 @@ class Remittance {
     required this.amount,
     this.state,
     required this.currencyId,
+    required this.bankAccountId,
     required this.rate
   });
 
@@ -33,6 +35,7 @@ class Remittance {
         amount: json['amount']?.toDouble(),
         state: json['state'],
         currencyId: (json['currency_id'] as int?) ?? 0,
+        bankAccountId: (json['bank_id'] as int?) ?? 0,
         rate: json['rate']?.toDouble()
     );
   }
@@ -49,6 +52,7 @@ class Remittance {
     DateTime? createdAt,
     double? amount,
     int? currencyId,
+    int? bankAccountId,
     String? state,
     double? rate
   }) {
@@ -60,6 +64,7 @@ class Remittance {
       amount: amount ?? this.amount,
       state: state ?? this.state,
       currencyId: currencyId ?? this.currencyId,
+      bankAccountId: bankAccountId ?? this.bankAccountId,
       rate: rate ?? this.rate
     );
   }
@@ -70,7 +75,8 @@ class Remittance {
       'code': code ?? '',
       'remittance_date': HumanFormats.toShortDate(createdAt, isShortFormat: false),
       'amount': amount,
-      'payment_currency_id': currencyId
+      'payment_currency_id': currencyId,
+      'bank_id': bankAccountId
     };
   }
 

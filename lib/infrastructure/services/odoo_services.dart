@@ -2,13 +2,17 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'package:yo_te_pago/business/config/constants/app_auth_states.dart';
+import 'package:yo_te_pago/business/config/constants/app_record_messages.dart';
+import 'package:yo_te_pago/business/config/constants/app_remittance_states.dart';
 import 'package:yo_te_pago/business/config/constants/odoo_endpoints.dart';
-import 'package:yo_te_pago/business/config/constants/validation_messages.dart';
 import 'package:yo_te_pago/business/domain/entities/balance.dart';
+import 'package:yo_te_pago/business/domain/entities/bank_account.dart';
 import 'package:yo_te_pago/business/domain/entities/company.dart';
 import 'package:yo_te_pago/business/domain/entities/currency.dart';
 import 'package:yo_te_pago/business/domain/entities/remittance.dart';
 import 'package:yo_te_pago/business/domain/services/ibase_service.dart';
+import 'package:yo_te_pago/infrastructure/models/dtos/bank_account_dto.dart';
 import 'package:yo_te_pago/infrastructure/models/odoo_auth_result.dart';
 import 'package:yo_te_pago/infrastructure/models/dtos/balance_dto.dart';
 import 'package:yo_te_pago/infrastructure/models/dtos/currency_dto.dart';
@@ -33,7 +37,7 @@ class OdooService extends IBaseService {
 
   Future<dynamic> _sendJsonRequest(String method, String path, {Map<String, dynamic>? bodyParams, Map<String, dynamic>? queryParams}) async {
     if (_authResult == null || _authResult!.sessionId == null) {
-      throw Exception(AppStates.noSession);
+      throw Exception(AppAuthMessages.errorNoSessionOrProcess);
     }
 
     Uri uri;
@@ -163,7 +167,7 @@ class OdooService extends IBaseService {
         final Map<String, dynamic>? result = jsonResponse['result'] as Map<String, dynamic>?;
         final setCookieHeader = response.headers['set-cookie'];
         if (setCookieHeader == null) {
-          throw Exception(AppStates.noCookie);
+          throw Exception(AppAuthMessages.errorNoCookie);
         }
         final cookieParts = setCookieHeader.split(';');
         String? sessionId;
@@ -178,7 +182,7 @@ class OdooService extends IBaseService {
 
           return true;
         } else {
-          throw Exception(AppStates.failedToRestoreSession);
+          throw Exception(AppAuthMessages.errorFailedToRestoreSession);
         }
       } else {
         throw Exception('Fallo la autenticación con código: ${response.statusCode} - ${response.body}');
@@ -332,7 +336,7 @@ class OdooService extends IBaseService {
       final bool success = response as bool;
 
       if (!success) {
-        throw Exception(AppStates.noEditedRemittance);
+        throw Exception(AppRecordMessages.errorNoEditedRecord);
       }
 
       return success;
@@ -365,7 +369,7 @@ class OdooService extends IBaseService {
       final bool success = response as bool;
 
       if (!success) {
-        throw Exception(AppStates.noPaidRemittance);
+        throw Exception(AppRemittanceMessages.noPaidRemittance);
       }
 
       return success;
@@ -435,7 +439,7 @@ class OdooService extends IBaseService {
       final bool success = response as bool;
 
       if (!success) {
-        throw Exception(AppStates.noEditedUser);
+        throw Exception(AppRecordMessages.errorNoEditedRecord);
       }
       if (_authResult != null) {
         _authResult = _authResult!.copyWith(userName: login);
@@ -475,7 +479,7 @@ class OdooService extends IBaseService {
       final bool success = response as bool;
 
       if (!success) {
-        throw Exception(AppStates.noEditedPartner);
+        throw Exception(AppRecordMessages.errorNoEditedRecord);
       }
       if (_authResult != null) {
         _authResult = _authResult!.copyWith(partnerName: name);
@@ -492,7 +496,7 @@ class OdooService extends IBaseService {
       return _authResult!.allowedCompanies;
     }
     if (_authResult == null || _authResult!.userId == 0) {
-      throw Exception(AppStates.noLogin);
+      throw Exception(AppAuthMessages.errorNoAuthenticate);
     }
 
     try {
@@ -562,6 +566,24 @@ class OdooService extends IBaseService {
       return fetchedCompanies;
     } catch (e) {
       throw Exception('Error al obtener compañías permitidas');
+    }
+  }
+
+  @override
+  Future<List<BankAccount>> getBankAccounts() async {
+    try {
+      final dynamic response = await _sendJsonRequest(
+          'GET',
+          OdooEndpoints.getBankAccount);
+      final List<BankAccountDto> bankAccounts = await _handleResponse<BankAccountDto>(
+          response,
+          (json) => BankAccountDto.fromJson(json));
+
+      return bankAccounts
+          .map((dto) => dto.toModel())
+          .toList();
+    } catch (e) {
+      throw Exception('Error al obtener monedas');
     }
   }
 

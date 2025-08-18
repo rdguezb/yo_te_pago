@@ -5,7 +5,9 @@ abstract class AppFormLabels {
   static const customer = 'Nombre del Cliente';
   static const amount = 'Importe';
   static const currency = 'Moneda de Pago';
+  static const accountBank = 'Cuenta Bancaria';
   static const paymentCurrency = 'Seleccione una moneda';
+  static const bankAccount = 'Seleccione una cuenta';
   static const code = 'Código';
   static const date = 'Fecha';
   static const time = 'Hora';

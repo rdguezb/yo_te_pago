@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'package:yo_te_pago/business/config/constants/app_network_states.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
-import 'package:yo_te_pago/business/config/constants/validation_messages.dart';
 import 'package:yo_te_pago/business/providers/auth_notifier.dart';
 import 'package:yo_te_pago/business/providers/balance_provider.dart';
 import 'package:yo_te_pago/presentation/widgets/reports/balance_tile.dart';
@@ -114,7 +114,7 @@ class _ReportViewState extends ConsumerState<ReportView> {
             ),
             SliverToBoxAdapter(
               child: FancyText(
-                messageText: AppStates.noBalance,
+                messageText: AppNetworkMessages.errorNoBalance,
                 iconData: Icons.sentiment_dissatisfied_rounded,
                 color: colors.error,
               ),

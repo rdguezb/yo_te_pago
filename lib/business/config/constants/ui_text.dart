@@ -7,5 +7,6 @@ abstract class AppTitles {
   static const currencyRates = 'Tasas de Cambio';
   static const registration = 'Registrarme';
   static const confirmation = 'Confirmar';
+  static const error = 'Error';
 
 }

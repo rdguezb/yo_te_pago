@@ -9,6 +9,7 @@ class RemittanceDto extends Remittance {
     required super.amount,
     required super.createdAt,
     required super.currencyId,
+    required super.bankAccountId,
     required super.rate,
     required super.state,
     super.code
@@ -24,6 +25,7 @@ class RemittanceDto extends Remittance {
         amount: json['amount']?.toDouble(),
         state: json['state'],
         currencyId: (json['currency_id'] as int?) ?? 0,
+        bankAccountId: (json['bank_account_id'] as int?) ?? 0,
         rate: json['rate']?.toDouble()
     );
   }
@@ -38,6 +40,7 @@ class RemittanceDto extends Remittance {
       amount: amount,
       state: state,
       currencyId: currencyId,
+      bankAccountId: bankAccountId,
       rate: rate
     );
   }

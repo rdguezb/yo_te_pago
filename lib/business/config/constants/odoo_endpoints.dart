@@ -7,5 +7,6 @@ abstract class OdooEndpoints {
   static const String getBalances = '/api/v1/balance/total';
   static const String getCurrencies = '/api/v1/rates/get';
   static const String getRemittances = '/api/v1/remittance/get';
+  static const String getBankAccount = '/api/v1/accounts/get';
 
 }

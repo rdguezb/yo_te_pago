@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:yo_te_pago/business/config/constants/app_remittance_states.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
-import 'package:yo_te_pago/business/config/constants/validation_messages.dart';
 import 'package:yo_te_pago/business/config/helpers/human_formats.dart';
 import 'package:yo_te_pago/business/domain/entities/currency.dart';
 import 'package:yo_te_pago/business/domain/entities/remittance.dart';
@@ -44,7 +44,7 @@ class _RemittanceVerticalListViewState extends State<RemittanceVerticalListView>
           Expanded(
               child: widget.remittances.isEmpty
                 ? FancyText(
-                    messageText: AppStates.noRemittance,
+                    messageText: AppRemittanceMessages.noRemittance,
                     iconData: Icons.sentiment_dissatisfied_rounded,
                     color: colors.error)
                 : ListView.builder(
@@ -128,14 +128,14 @@ class _RemittanceTile extends ConsumerWidget {
       if (success) {
         showCustomSnackBar(
           context: context,
-          message: AppStates.remittancePaidSuccess,
+          message: AppRemittanceMessages.remittancePaidSuccess,
           type: SnackBarType.success,
         );
         await remittanceNotifier.loadRemittances();
       } else {
         showCustomSnackBar(
           context: context,
-          message: AppStates.remittancePaidError,
+          message: AppRemittanceMessages.remittancePaidError,
           type: SnackBarType.error,
         );
       }
@@ -176,14 +176,14 @@ class _RemittanceTile extends ConsumerWidget {
       if (success) {
         showCustomSnackBar(
           context: context,
-          message: AppStates.remittanceDeletedSuccess,
+          message: AppRemittanceMessages.remittanceDeletedSuccess,
           type: SnackBarType.success,
         );
         await remittanceNotifier.loadRemittances();
       } else {
         showCustomSnackBar(
           context: context,
-          message: AppStates.remittanceDeletedError,
+          message: AppRemittanceMessages.remittanceDeletedError,
           type: SnackBarType.error,
         );
       }

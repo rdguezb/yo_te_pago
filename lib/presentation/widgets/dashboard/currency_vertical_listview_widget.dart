@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:yo_te_pago/business/config/constants/app_network_states.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
-import 'package:yo_te_pago/business/config/constants/validation_messages.dart';
 import 'package:yo_te_pago/business/domain/entities/currency.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/fancy_text.dart';
 
@@ -64,7 +64,7 @@ class _CurrencyVerticalListViewState extends State<CurrencyVerticalListView> {
           Expanded(
               child: widget.currencies.isEmpty
                   ? FancyText(
-                  messageText: AppStates.noRates,
+                  messageText: AppNetworkMessages.errorNoRates,
                   iconData: Icons.sentiment_dissatisfied_rounded,
                   color: colors.error)
                   : ListView.builder(

@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:yo_te_pago/business/config/constants/api_const.dart';
+import 'package:yo_te_pago/business/config/constants/app_record_messages.dart';
 import 'package:yo_te_pago/business/config/constants/configs.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
-import 'package:yo_te_pago/business/config/constants/validation_messages.dart';
 import 'package:yo_te_pago/business/config/helpers/form_fields_validators.dart';
 import 'package:yo_te_pago/business/domain/entities/app_data.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
@@ -125,7 +125,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
         }
         showCustomSnackBar(
           context: context,
-          message: AppStates.registerSuccess,
+          message: AppRecordMessages.registerSuccess,
           type: SnackBarType.success,
         );
       }
@@ -137,7 +137,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
       }
       showCustomSnackBar(
           context: context,
-          message: AppStates.registerFailure,
+          message: AppRecordMessages.registerFailure,
           type: SnackBarType.error
       );
       return false;
@@ -216,7 +216,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
                   }
                   showCustomSnackBar(
                     context: context,
-                    message: AppStates.registerFailure,
+                    message: AppRecordMessages.registerFailure,
                     type: SnackBarType.error,
                   );
                 }

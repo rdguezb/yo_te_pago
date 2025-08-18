@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:yo_te_pago/business/config/constants/validation_messages.dart';
+import 'package:yo_te_pago/business/config/constants/app_network_states.dart';
 import 'package:yo_te_pago/business/domain/entities/currency.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/infrastructure/services/odoo_services.dart';
@@ -48,7 +48,7 @@ class CurrencyNotifier extends StateNotifier<CurrencyState> {
     if (odooService == null || !odooSessionState.isAuthenticated) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: AppStates.noOdooConectionforCurrencies,
+        errorMessage: AppNetworkMessages.errorNoConection,
       );
       return;
     }
@@ -79,6 +79,7 @@ class CurrencyNotifier extends StateNotifier<CurrencyState> {
   }
 
 }
+
 
 final currencyProvider = StateNotifierProvider<CurrencyNotifier, CurrencyState>((ref) {
 

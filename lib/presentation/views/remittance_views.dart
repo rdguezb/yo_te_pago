@@ -2,21 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:yo_te_pago/business/config/constants/app_network_states.dart';
+import 'package:yo_te_pago/business/config/constants/app_record_messages.dart';
+import 'package:yo_te_pago/business/config/constants/app_remittance_states.dart';
+import 'package:yo_te_pago/business/config/constants/app_validation.dart';
 import 'package:yo_te_pago/business/config/constants/configs.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
-import 'package:yo_te_pago/business/config/constants/validation_messages.dart';
 import 'package:yo_te_pago/business/config/helpers/form_fields_validators.dart';
 import 'package:yo_te_pago/business/config/helpers/human_formats.dart';
+import 'package:yo_te_pago/business/domain/entities/bank_account.dart';
 import 'package:yo_te_pago/business/domain/entities/currency.dart';
 import 'package:yo_te_pago/business/domain/entities/remittance.dart';
+import 'package:yo_te_pago/business/providers/bank_account_provider.dart';
 import 'package:yo_te_pago/business/providers/currency_provider.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/business/providers/remittance_provider.dart';
-import 'package:yo_te_pago/presentation/widgets/input/currency_dropdown_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/input/custom_text_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/input/date_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/input/decimal_form_fields.dart';
+import 'package:yo_te_pago/presentation/widgets/input/dropdown_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/input/time_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 
@@ -81,6 +86,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   String _selectedCurrencyId = '';
+  String _selectedAccountId = '';
   bool _isLoadingRemittance = false;
   bool _isFormEditable = true;
   Remittance? _remittance;
@@ -97,11 +103,20 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
     }
     final odooService = ref.read(odooServiceProvider);
     final currenciesState = ref.read(currencyProvider);
+    final accountState = ref.read(accountProvider);
 
     if (currenciesState.currencies.isEmpty) {
       showCustomSnackBar(
         context: context,
-        message: AppStates.noCurrencies,
+        message: AppNetworkMessages.errorNoCurrencies,
+        type: SnackBarType.error,
+      );
+      return false;
+    }
+    if (accountState.accounts.isEmpty) {
+      showCustomSnackBar(
+        context: context,
+        message: AppNetworkMessages.errorNoBankAccount,
         type: SnackBarType.error,
       );
       return false;
@@ -112,7 +127,11 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
     final createDate = HumanFormats.toDateTime('${_dateController.text} ${_timeController.text}');
     final currency = currenciesState.currencies.firstWhere(
       (c) => c.id.toString() == _selectedCurrencyId,
-      orElse: () => throw Exception(AppStates.noCurrencies)
+      orElse: () => throw Exception(AppNetworkMessages.errorNoCurrencies)
+    );
+    final bankAccount = accountState.accounts.firstWhere(
+      (c) => c.id.toString() == _selectedAccountId,
+      orElse: () => throw Exception(AppNetworkMessages.errorNoBankAccount)
     );
 
     final remittanceToSave = Remittance(
@@ -121,6 +140,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
         amount: amount,
         code: code,
         currencyId: currency.id,
+        bankAccountId: bankAccount.id,
         createdAt: createDate,
         rate: currency.rate
     );
@@ -133,7 +153,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
         }
         showCustomSnackBar(
           context: context,
-          message: AppStates.registerSuccess,
+          message: AppRecordMessages.registerSuccess,
           type: SnackBarType.success,
         );
       } else {
@@ -143,7 +163,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
         }
         showCustomSnackBar(
           context: context,
-          message: AppStates.registerSuccess,
+          message: AppRecordMessages.registerSuccess,
           type: SnackBarType.success,
         );
       }
@@ -168,6 +188,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
     _codeController.clear();
     _amountController.clear();
     _selectedCurrencyId = '';
+    _selectedAccountId = '';
     _remittance = null;
     _isFormEditable = true;
     final now = DateTime.now();
@@ -187,7 +208,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
         return;
       }
       if (remittances.isEmpty) {
-        throw Exception(AppStates.noRemittance);
+        throw Exception(AppRemittanceMessages.noRemittance);
       }
       final Remittance loadedRemittance = remittances.first;
 
@@ -201,7 +222,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
       if (!_isFormEditable) {
         showCustomSnackBar(
           context: context,
-          message: AppStates.remittanceConfirmed,
+          message: AppRemittanceMessages.remittanceConfirmed,
           type: SnackBarType.info,
         );
       }
@@ -229,6 +250,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
     _dateController.text = HumanFormats.toShortDate(remittance.createdAt);
     _timeController.text = HumanFormats.toShortTime(remittance.createdAt);
     _selectedCurrencyId = remittance.currencyId.toString();
+    _selectedAccountId = remittance.bankAccountId.toString();
   }
 
   @override
@@ -237,6 +259,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
 
     Future.microtask(() {
       ref.read(currencyProvider.notifier).loadCurrencies();
+      ref.read(accountProvider.notifier).loadAccounts();
     });
     if (widget.id != null) {
       _loadRemittance(widget.id!);
@@ -265,16 +288,24 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
     final List<Currency> currencies = currenciesState.currencies;
     final bool isLoadingCurrencies = currenciesState.isLoading;
     final String? currencyErrorMessage = currenciesState.errorMessage;
+    final accountState = ref.watch(accountProvider);
+    final List<BankAccount> accounts = accountState.accounts;
+    final bool isLoadingAccounts = accountState.isLoading;
+    final String? accountErrorMessage = accountState.errorMessage;
+    Widget currencyComboBox;
+    Widget accountComboBox;
 
     ref.listen<CurrencyState>(currencyProvider, (previousState, newState) {
-      if (!newState.isLoading &&
-          newState.currencies.isNotEmpty &&
-          _isFormEditable &&
-          _selectedCurrencyId.isEmpty &&
-          widget.id == null
-      ) {
+      if (!newState.isLoading && newState.currencies.isNotEmpty && _isFormEditable && _selectedCurrencyId.isEmpty && widget.id == null) {
         setState(() {
           _selectedCurrencyId = newState.currencies.first.id.toString();
+        });
+      }
+    });
+    ref.listen<BankAccountState>(accountProvider, (previousState, newState) {
+      if (!newState.isLoading && newState.accounts.isNotEmpty && _isFormEditable && _selectedAccountId.isEmpty && widget.id == null) {
+        setState(() {
+          _selectedCurrencyId = newState.accounts.first.id.toString();
         });
       }
     });
@@ -285,10 +316,112 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
     if (widget.id != null && _remittance == null && !_isLoadingRemittance) {
       return Center(
         child: Text(
-          AppStates.noRemittance,
+          AppRemittanceMessages.noRemittance,
           style: TextStyle(color: colors.error),
           textAlign: TextAlign.center,
         ),
+      );
+    }
+
+    if (isLoadingCurrencies) {
+      currencyComboBox = const Center(child: CircularProgressIndicator());
+    } else if (currencyErrorMessage != null) {
+      currencyComboBox = Column(
+          children: [
+            Text(
+                'Error al cargar monedas: $currencyErrorMessage. Por favor, intente recargar.',
+                style: const TextStyle(color: Colors.red),
+                textAlign: TextAlign.center
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+                onPressed: () {
+                  ref.read(currencyProvider.notifier).loadCurrencies();
+                },
+                child: const Text(AppButtons.retry)
+            ),
+          ]
+      );
+    } else if (currencies.isEmpty) {
+      currencyComboBox = Text(
+          AppNetworkMessages.errorNoCurrencies,
+          style: const TextStyle(color: Colors.red),
+          textAlign: TextAlign.center
+      );
+    } else {
+      currencyComboBox = ComboBoxPicker(
+          hint: AppFormLabels.paymentCurrency,
+          label: AppFormLabels.currency,
+          isRequired: true,
+          selectedId: _selectedCurrencyId,
+          items: currencies.map((currency) =>
+              DropdownMenuItem<String>(
+                value: '${currency.id}',
+                child: Text('[${currency.name}] ${currency.fullName}'),
+              )).toList(),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return AppValidationMessages.currencySelection;
+            }
+            return null;
+          },
+          onChanged: _isFormEditable
+              ? (value) {
+            setState(() {
+              _selectedCurrencyId = value!.trim();
+            });
+          }
+              : null
+      );
+    }
+    if (isLoadingAccounts) {
+      accountComboBox = const Center(child: CircularProgressIndicator());
+    } else if (accountErrorMessage != null) {
+      accountComboBox = Column(
+          children: [
+            Text(
+                'Error al cargar cuentas bancarias: $accountErrorMessage. Por favor, intente recargar.',
+                style: const TextStyle(color: Colors.red),
+                textAlign: TextAlign.center
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+                onPressed: () {
+                  ref.read(accountProvider.notifier).loadAccounts();
+                },
+                child: const Text(AppButtons.retry)
+            ),
+          ]
+      );
+    } else if (currencies.isEmpty) {
+      accountComboBox = Text(
+          AppNetworkMessages.errorNoBankAccount,
+          style: const TextStyle(color: Colors.red),
+          textAlign: TextAlign.center
+      );
+    } else {
+      accountComboBox = ComboBoxPicker(
+          hint: AppFormLabels.bankAccount,
+          label: AppFormLabels.accountBank,
+          isRequired: true,
+          selectedId: _selectedAccountId,
+          items: accounts.map((account) => DropdownMenuItem<String>(
+            value: '${account.id}',
+            child: Text('[${account.bankName}] ${account.name}'),
+          )).toList(),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return AppValidationMessages.accountSelection;
+            }
+            return null;
+          },
+          onChanged: _isFormEditable
+              ? (value) {
+            setState(() {
+              _selectedAccountId = value!.trim();
+            });
+          }
+              : null
       );
     }
 
@@ -368,54 +501,17 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
 
           const SizedBox(height: 20),
 
-          if (isLoadingCurrencies)
-            const Center(child: CircularProgressIndicator())
-          else if (currencyErrorMessage != null)
-            Column(
-              children: [
-                Text(
-                  'Error al cargar monedas: $currencyErrorMessage. Por favor, intente recargar.',
-                  style: const TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 10),
-                ElevatedButton(
-                  onPressed: () {
-                    ref.read(currencyProvider.notifier).loadCurrencies();
-                  },
-                  child: const Text(AppButtons.retry),
-                ),
-              ],
-            )
-          else if (currencies.isEmpty)
-              Text(AppStates.noCurrencies,
-                style: const TextStyle(color: Colors.red),
-                textAlign: TextAlign.center,
+          Row(
+            children: [
+              Expanded(
+                child: currencyComboBox
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: accountComboBox
               )
-          else
-            CurrencyPicker(
-              hint: AppFormLabels.paymentCurrency,
-              label: AppFormLabels.currency,
-              isRequired: true,
-              selectedId: _selectedCurrencyId,
-              items: currencies.map((currency) => DropdownMenuItem<String>(
-                value: '${currency.id}',
-                child: Text('[${currency.name}] ${currency.fullName}'),
-              )).toList(),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return AppValidation.currencySelection;
-                }
-                return null;
-              },
-              onChanged: _isFormEditable
-                  ? (value) {
-                      setState(() {
-                        _selectedCurrencyId = value!.trim();
-                      });
-                    }
-                  : null
-            ),
+            ],
+          ),
 
           const SizedBox(height: 20),
 
@@ -438,7 +534,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
                   }
                   showCustomSnackBar(
                     context: context,
-                    message: AppStates.registerFailure,
+                    message: AppRecordMessages.registerFailure,
                     type: SnackBarType.error
                   );
                 }
@@ -453,7 +549,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
               alignment: Alignment.center,
               padding: const EdgeInsets.symmetric(vertical: 16.0),
               child: Text(
-                AppStates.remittanceConfirmed,
+                AppRemittanceMessages.remittanceConfirmed,
                 style: TextStyle(
                   color: colors.onSurfaceVariant,
                   fontStyle: FontStyle.italic

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-class CurrencyPicker extends StatelessWidget {
+
+class ComboBoxPicker extends StatelessWidget {
 
   final String hint;
   final String label;
@@ -10,7 +11,7 @@ class CurrencyPicker extends StatelessWidget {
   final ValueChanged<String?>? onChanged;
   final List<DropdownMenuItem<String>> items;
 
-  const CurrencyPicker({
+  const ComboBoxPicker({
     super.key,
     required this.hint,
     required this.label,

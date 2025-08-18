@@ -1,4 +1,5 @@
 import 'package:yo_te_pago/business/domain/entities/balance.dart';
+import 'package:yo_te_pago/business/domain/entities/bank_account.dart';
 import 'package:yo_te_pago/business/domain/entities/currency.dart';
 import 'package:yo_te_pago/business/domain/entities/remittance.dart';
 
@@ -7,6 +8,7 @@ abstract class IBaseService {
 
   Future<List<Currency>> getCurrencies();
   Future<List<Balance>> getBalances();
+  Future<List<BankAccount>> getBankAccounts();
 
   Future<Remittance> addRemittance(Remittance remittance);
   Future<List<Remittance>> getRemittances({int? id});

@@ -1,11 +1,11 @@
-import 'package:yo_te_pago/business/config/constants/validation_messages.dart';
+import 'package:yo_te_pago/business/config/constants/app_validation.dart';
 
 
 class FormValidators {
 
   static String? validateRequired(String? value, {String? errorMessage}) {
     if (value == null || value.trim().isEmpty) {
-      return errorMessage ?? AppValidation.required;
+      return errorMessage ?? AppValidationMessages.required;
     }
 
     return null;
@@ -13,15 +13,15 @@ class FormValidators {
 
   static String? validateInteger(String? value, {String? errorMessage}) {
     if (value == null || value.trim().isEmpty) {
-      return errorMessage ?? AppValidation.required;
+      return errorMessage ?? AppValidationMessages.required;
     }
 
     final number = double.tryParse(value);
     if (number == null) {
-      return AppValidation.invalidNumber;
+      return AppValidationMessages.invalidNumber;
     }
     if (number <= 0) {
-      return AppValidation.positiveNumber;
+      return AppValidationMessages.positiveNumber;
     }
 
     return null;

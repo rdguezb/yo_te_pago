@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:yo_te_pago/business/config/constants/validation_messages.dart';
+import 'package:yo_te_pago/business/config/constants/app_general_states.dart';
 
 
 class LoadingScreen extends StatelessWidget {
@@ -20,7 +20,7 @@ class LoadingScreen extends StatelessWidget {
             CircularProgressIndicator(strokeWidth: 4),
             SizedBox(height: 20),
             Text(
-              AppStates.loading,
+              AppGeneralMessages.loading,
               style: TextStyle(
                   fontSize: 18,
                   color: Colors.grey
