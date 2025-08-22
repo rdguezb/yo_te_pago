@@ -583,7 +583,7 @@ class OdooService extends IBaseService {
           .map((dto) => dto.toModel())
           .toList();
     } catch (e) {
-      throw Exception('Error al obtener monedas');
+      throw Exception('Error al obtener cuentas bancarias');
     }
   }
 

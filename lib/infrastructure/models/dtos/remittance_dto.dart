@@ -25,7 +25,7 @@ class RemittanceDto extends Remittance {
         amount: json['amount']?.toDouble(),
         state: json['state'],
         currencyId: (json['currency_id'] as int?) ?? 0,
-        bankAccountId: (json['bank_account_id'] as int?) ?? 0,
+        bankAccountId: (json['bank_id'] as int?) ?? 0,
         rate: json['rate']?.toDouble()
     );
   }

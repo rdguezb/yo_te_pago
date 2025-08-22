@@ -1,6 +1,5 @@
 class AppDataPoco {
 
-  @override
   int? id;
   String keyName;
   String valueStr;
@@ -13,7 +12,6 @@ class AppDataPoco {
     required this.valueType
   });
 
-  @override
   Map<String, dynamic> toMap() {
     return {
       'id': id,

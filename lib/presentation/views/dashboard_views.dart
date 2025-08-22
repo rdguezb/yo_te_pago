@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/providers/auth_notifier.dart';
+import 'package:yo_te_pago/business/providers/bank_account_provider.dart';
 import 'package:yo_te_pago/business/providers/currency_provider.dart';
 import 'package:yo_te_pago/business/providers/remittance_provider.dart';
 import 'package:yo_te_pago/presentation/widgets/dashboard/currency_vertical_listview_widget.dart';
@@ -34,6 +35,7 @@ class DashboardViewState extends ConsumerState<DashboardView> {
     try {
       await ref.read(currencyProvider.notifier).loadCurrencies();
       await ref.read(remittanceProvider.notifier).loadRemittances();
+      await ref.read(accountProvider.notifier).loadAccounts();
     } catch (e) {
       if (mounted) {
         showCustomSnackBar(
@@ -62,6 +64,7 @@ class DashboardViewState extends ConsumerState<DashboardView> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authNotifierProvider);
     final currenciesState = ref.watch(currencyProvider);
+    final accountState = ref.watch(accountProvider);
     final remittancesState = ref.watch(remittanceProvider);
 
     ref.listen<bool>(authNotifierProvider.select((auth) => auth.isLoggedIn), (prev, next) {
@@ -73,6 +76,26 @@ class DashboardViewState extends ConsumerState<DashboardView> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    if (accountState.errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+                'Error al cargar cuentas de banco: ${accountState.errorMessage}',
+                textAlign: TextAlign.center),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: () {
+                _dataLoadTriggered = false;
+                _loadDataOnceAuthenticated();
+              },
+              child: const Text(AppButtons.retry),
+            ),
+          ],
+        ),
+      );
+    }
     if (currenciesState.errorMessage != null) {
       return Center(
         child: Column(
@@ -142,6 +165,7 @@ class DashboardViewState extends ConsumerState<DashboardView> {
                   RemittanceVerticalListView(
                     remittances: remittancesState.remittances,
                     currencies: currenciesState.currencies,
+                    accounts: accountState.accounts
                   ),
 
                   const SizedBox(height: 10),

@@ -6,6 +6,7 @@ import 'package:yo_te_pago/business/config/constants/app_remittance_states.dart'
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/helpers/human_formats.dart';
+import 'package:yo_te_pago/business/domain/entities/bank_account.dart';
 import 'package:yo_te_pago/business/domain/entities/currency.dart';
 import 'package:yo_te_pago/business/domain/entities/remittance.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/fancy_text.dart';
@@ -19,10 +20,12 @@ class RemittanceVerticalListView extends StatefulWidget {
 
   final List<Remittance> remittances;
   final List<Currency> currencies;
+  final List<BankAccount> accounts;
 
   const RemittanceVerticalListView({
     super.key,
     required this.remittances,
+    required this.accounts,
     required this.currencies});
 
   @override
@@ -62,8 +65,16 @@ class _RemittanceVerticalListViewState extends State<RemittanceVerticalListView>
                                 symbol: '',
                                 rate: remittance.rate,
                               ));
+                      final account = widget.accounts.firstWhere(
+                          (a) => a.id == remittance.bankAccountId,
+                          orElse: () => BankAccount(
+                            id: -1,
+                            bankName: 'No Banco',
+                            name: 'Cuenta desconocida'
+                          ));
                       return _RemittanceTile(
                           remittance: remittance,
+                          account: account,
                           currency: currency
                       );
                     })
@@ -80,9 +91,11 @@ class _RemittanceTile extends ConsumerWidget {
 
   final Remittance remittance;
   final Currency currency;
+  final BankAccount account;
 
   const _RemittanceTile({
     required this.remittance,
+    required this.account,
     required this.currency
   });
 
@@ -202,8 +215,32 @@ class _RemittanceTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     Color textColor = _getTileColor(context);
-    final subtitle =
-        '${remittance.amount}   ${currency.name} [${remittance.rate}]   ${HumanFormats.toShortDate(remittance.createdAt)}';
+
+    final currencyRow = Row(
+      children: [
+        Text(
+          '${remittance.amount} | ${currency.toStr(remittance.rate)} | ${remittance.createdAtToStr}',
+          style: TextStyle(color: textColor.withAlpha(178)),
+        ),
+        const Spacer(),
+        Text(
+          HumanFormats.toAmount(remittance.rate * remittance.amount, currency.symbol),
+          style: TextStyle(color: textColor.withAlpha(178)),
+        )
+      ],
+    );
+
+    final bankAccountRow = Row(
+      children: [
+        Expanded(
+          child: Text(
+            account.toString(),
+            style: TextStyle(color: textColor.withAlpha(178)),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
 
     return Card(
         margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -239,16 +276,12 @@ class _RemittanceTile extends ConsumerWidget {
                               onPressed: () => _onPay(context, ref))
                       ]
                     ),
-                    subtitle: Row(
-                        children: [
-                          Text(
-                            subtitle,
-                            style: TextStyle(color: textColor.withAlpha(178))),
-                          const Spacer(),
-                            Text(
-                              HumanFormats.toAmount(remittance.rate * remittance.amount, currency.symbol),
-                              style: TextStyle(color: textColor.withAlpha(178)))
-                        ]
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        bankAccountRow,
+                        currencyRow
+                      ]
                     )
                   )
                 )

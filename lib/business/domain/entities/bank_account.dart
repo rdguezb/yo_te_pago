@@ -19,4 +19,9 @@ class BankAccount {
     );
   }
 
+  @override
+  String toString() {
+
+    return '$name - $bankName';
+  }
 }

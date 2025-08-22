@@ -44,6 +44,7 @@ class Remittance {
   bool get isConfirmed => state == 'confirmed';
   bool get isWaiting => state == 'waiting';
   bool get isCanceled => state == 'cancelled';
+  String get createdAtToStr => HumanFormats.toShortDate(createdAt);
 
   Remittance copyWith({
     int? id,

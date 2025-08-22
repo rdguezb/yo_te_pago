@@ -35,4 +35,14 @@ class Currency {
     };
   }
 
+  String toStr(double rate) {
+
+    return '$name [$rate]';
+  }
+
+  @override
+  String toString() {
+
+    return '[$name] $fullName';
+  }
 }

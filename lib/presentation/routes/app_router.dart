@@ -12,31 +12,28 @@ import 'package:yo_te_pago/presentation/views/remittance_views.dart';
 final appRouterProvider = Provider<GoRouter>((ref) {
 
   final authNotifier = ref.watch(authNotifierProvider);
-  const String homePath = '/home/:page';
-  const String registerPath = '/register';
-  const String remittancePath = '/remittance/edit/:id';
+  const String pathHome = '/home/:page';
+  const String pathRegister = '/register';
+  const String pathRemittance = '/remittance/edit/:id';
+  const String pathLoading = '/loading';
 
   String getHomePath(int pageIndex) => '/home/$pageIndex';
 
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: pathLoading,
     refreshListenable: authNotifier,
 
     routes: [
       GoRoute(
-        path: '/',
-        builder: (context, state) {
-          if (!authNotifier.isInitialized) {
-            return const LoadingScreen();
-          }
-
-          return authNotifier.isLoggedIn
-              ? HomeScreen(pageIndex: 0)
-              : const RegisterScreen();
-        },
+        path: pathLoading,
+        builder: (context, state) => const LoadingScreen()
       ),
       GoRoute(
-        path: homePath,
+        path: '/',
+        redirect: (_, __) => '/home/0'
+      ),
+      GoRoute(
+        path: pathHome,
         name: HomeScreen.name,
         builder: (context, state) {
           final pageIndex = int.tryParse(state.pathParameters['page'] ?? '0') ?? 0;
@@ -45,34 +42,33 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: registerPath,
+        path: pathRegister,
         name: RegisterScreen.name,
         builder: (context, state) => const RegisterScreen(),
       ),
       GoRoute(
-        path: remittancePath,
+        path: pathRemittance,
         name: RemittanceView.name,
         builder: (context, state) {
           final id = int.tryParse(state.pathParameters['id'] ?? '0');
-          return RemittanceView(
-            id: id
-          );
+
+          return RemittanceView(id: id);
         },
       ),
     ],
 
     redirect: (BuildContext context, GoRouterState state) {
-      if (!authNotifier.isInitialized) {
-        return null;
-      }
       final isAuthenticated = authNotifier.isLoggedIn;
-      final isGoingToRegister = state.uri.path == registerPath;
+      final isGoingToLoading = state.matchedLocation == pathLoading;
 
-      if (!isAuthenticated && !isGoingToRegister) {
-        return registerPath;
+      if (!authNotifier.isInitialized) {
+        return isGoingToLoading ? null : pathLoading;
       }
-
-      if (isAuthenticated && isGoingToRegister) {
+      final isGoingToRegister = state.matchedLocation == pathRegister;
+      if (!isAuthenticated && !isGoingToRegister) {
+        return pathRegister;
+      }
+      if (isAuthenticated && (isGoingToRegister || isGoingToLoading)) {
         return getHomePath(0);
       }
 

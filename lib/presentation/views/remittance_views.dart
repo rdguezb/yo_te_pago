@@ -305,7 +305,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
     ref.listen<BankAccountState>(accountProvider, (previousState, newState) {
       if (!newState.isLoading && newState.accounts.isNotEmpty && _isFormEditable && _selectedAccountId.isEmpty && widget.id == null) {
         setState(() {
-          _selectedCurrencyId = newState.accounts.first.id.toString();
+          _selectedAccountId = newState.accounts.first.id.toString();
         });
       }
     });
@@ -357,7 +357,9 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
           items: currencies.map((currency) =>
               DropdownMenuItem<String>(
                 value: '${currency.id}',
-                child: Text('[${currency.name}] ${currency.fullName}'),
+                child: Flexible(
+                    child: Text(currency.toString())
+                )
               )).toList(),
           validator: (value) {
             if (value == null || value.isEmpty) {
@@ -407,7 +409,9 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
           selectedId: _selectedAccountId,
           items: accounts.map((account) => DropdownMenuItem<String>(
             value: '${account.id}',
-            child: Text('[${account.bankName}] ${account.name}'),
+            child: Flexible(
+              child: Text(account.toString())
+            )
           )).toList(),
           validator: (value) {
             if (value == null || value.isEmpty) {
@@ -503,14 +507,16 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
 
           Row(
             children: [
-              Expanded(
-                child: currencyComboBox
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: accountComboBox
-              )
-            ],
+              Expanded(child: accountComboBox)
+            ]
+          ),
+
+          const SizedBox(height: 20),
+
+          Row(
+            children: [
+              Expanded(child: currencyComboBox)
+            ]
           ),
 
           const SizedBox(height: 20),
