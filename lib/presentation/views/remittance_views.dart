@@ -357,9 +357,9 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
           items: currencies.map((currency) =>
               DropdownMenuItem<String>(
                 value: '${currency.id}',
-                child: Flexible(
-                    child: Text(currency.toString())
-                )
+                child: Text(
+                  currency.toString(),
+                  overflow: TextOverflow.ellipsis)
               )).toList(),
           validator: (value) {
             if (value == null || value.isEmpty) {
@@ -395,7 +395,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
             ),
           ]
       );
-    } else if (currencies.isEmpty) {
+    } else if (accounts.isEmpty) {
       accountComboBox = Text(
           AppNetworkMessages.errorNoBankAccount,
           style: const TextStyle(color: Colors.red),
@@ -409,8 +409,9 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
           selectedId: _selectedAccountId,
           items: accounts.map((account) => DropdownMenuItem<String>(
             value: '${account.id}',
-            child: Flexible(
-              child: Text(account.toString())
+            child: Text(
+              account.toString(),
+              overflow: TextOverflow.ellipsis
             )
           )).toList(),
           validator: (value) {
@@ -505,19 +506,11 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
 
           const SizedBox(height: 20),
 
-          Row(
-            children: [
-              Expanded(child: accountComboBox)
-            ]
-          ),
+          accountComboBox,
 
           const SizedBox(height: 20),
 
-          Row(
-            children: [
-              Expanded(child: currencyComboBox)
-            ]
-          ),
+          currencyComboBox,
 
           const SizedBox(height: 20),
 
