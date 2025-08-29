@@ -11,6 +11,7 @@ class OdooAuth {
   final String? sessionId;
   final String? serverURL;
   final String? databaseName;
+  final String? role;
 
   OdooAuth({
     required this.userId,
@@ -19,6 +20,7 @@ class OdooAuth {
     required this.partnerName,
     required this.companyId,
     required this.allowedCompanies,
+    required this.role,
     this.serverURL,
     this.databaseName,
     this.sessionId
@@ -44,6 +46,7 @@ class OdooAuth {
       userName: json['username'] as String,
       partnerId: json['partner_id'] as int,
       partnerName: json['name'] as String,
+      role: json['role'] as String,
       companyId: id,
       allowedCompanies: companies,
       sessionId: sessionId
@@ -64,6 +67,7 @@ class OdooAuth {
       partnerName: partnerName ?? this.partnerName,
       companyId: companyId ?? this.companyId,
       allowedCompanies: allowedCompanies ?? this.allowedCompanies,
+      role: role,
       sessionId: sessionId,
       serverURL: serverURL,
       databaseName: databaseName

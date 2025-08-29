@@ -13,12 +13,6 @@ class CustomBottomNavigationBar extends ConsumerWidget {
   final double elevation;
   final bool showSelectedLabels;
   final bool showUnselectedLabels;
-  static const List<String> navRoutes = [
-    '/home/0',
-    '/home/1',
-    '/home/2',
-    '/home/3',
-  ];
 
   const CustomBottomNavigationBar({
     super.key,
@@ -30,34 +24,37 @@ class CustomBottomNavigationBar extends ConsumerWidget {
     this.showUnselectedLabels = true
   });
 
-  void _onItemTapped(BuildContext context, int index, WidgetRef ref) {
-    final String tappedItemKey = appBottomNavigationItems.keys.elementAt(index);
-    if (tappedItemKey == 'Salir') {
+  void _onItemTapped(BuildContext context, int index, WidgetRef ref, List<BottomBarItem> currentItems) {
+    final tappedItem = currentItems.elementAt(index);
+
+    if (tappedItem.label == 'Salir') {
       ref.read(odooSessionNotifierProvider.notifier).logout();
     } else {
-      if (index >= 0 && index < navRoutes.length) {
-        final route = navRoutes[index];
-        context.go(route);
-      }
+      context.go(tappedItem.path);
     }
   }
-
-  static final List<BottomNavigationBarItem> _navItems = appBottomNavigationItems.entries.map((entry) =>
-      BottomNavigationBarItem(
-        icon: Icon(entry.value),
-        activeIcon: Icon(entry.value, color: Colors.blue),
-        label: entry.key,
-        backgroundColor: Colors.white,
-      )).toList();
-
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = Theme.of(context).colorScheme;
+    final odooSessionState = ref.read(odooSessionNotifierProvider);
+    final userRole = odooSessionState.session?.role;
+
+    final List<BottomBarItem> roleNavItems = appBottomNavigationItems.values
+        .where((item) => item.allowedRoles.contains(userRole))
+        .toList();
+    final List<BottomNavigationBarItem> _navItems = roleNavItems.map((item) {
+      return BottomNavigationBarItem(
+        icon: Icon(item.icon),
+        activeIcon: Icon(item.icon, color: colors.primary),
+        label: item.label,
+        backgroundColor: colors.surface,
+      );
+    }).toList();
 
     return BottomNavigationBar(
         currentIndex: selectedIndex.clamp(0, _navItems.length - 1),
-        onTap: (value) => _onItemTapped(context, value, ref),
+        onTap: (value) => _onItemTapped(context, value, ref, roleNavItems),
         elevation: elevation,
         selectedItemColor: selectedItemColor ?? colors.primary,
         unselectedItemColor: unselectedItemColor ?? colors.onSurface.withAlpha((255 * 0.6).round()),

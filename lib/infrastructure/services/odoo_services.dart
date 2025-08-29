@@ -34,6 +34,7 @@ class OdooService extends IBaseService {
   String get databaseName => _databaseName;
   OdooAuth get odooSessionInfo => _authResult!;
   String get partnerName => _authResult!.partnerName;
+  String? get userRole => _authResult!.role;
 
   Future<dynamic> _sendJsonRequest(String method, String path, {Map<String, dynamic>? bodyParams, Map<String, dynamic>? queryParams}) async {
     if (_authResult == null || _authResult!.sessionId == null) {
@@ -197,15 +198,13 @@ class OdooService extends IBaseService {
   Future<void> logout() async {
     final uri = Uri.parse('$baseUrl${OdooEndpoints.logout}');
     try {
-      final response = await http.post(
+      final response = await http.get(
         uri,
         headers: {
-          'Content-Type': 'application/json',
           'Cookie': _authResult!.sessionId ?? '',
         },
-        body: jsonEncode({}),
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 303) {
         _authResult = null;
       } else {
         throw Exception('OdooService: Error al cerrar sesión: ${response.statusCode} - ${response.body}');
