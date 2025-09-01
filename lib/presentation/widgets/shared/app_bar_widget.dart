@@ -1,24 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import 'package:yo_te_pago/business/config/constants/configs.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 
 
+final packageInfoProvider = FutureProvider<PackageInfo>((ref) async {
+  return await PackageInfo.fromPlatform();
+});
+
 class CustomAppBar extends ConsumerWidget {
 
   const CustomAppBar({super.key});
-
-  static const String _currentVersion = String.fromEnvironment(
-    'APP_VERSION',
-    defaultValue: '1.0.0',
-  );
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final styles = Theme.of(context).textTheme;
     final odooService = ref.watch(odooServiceProvider);
     final String userName = odooService.partnerName;
+    final packageInfoAsync = ref.watch(packageInfoProvider);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 8.0),
@@ -41,11 +42,18 @@ class CustomAppBar extends ConsumerWidget {
                   style: styles.titleMedium,
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1),
-                Text(
-                  _currentVersion,
-                  style: styles.bodySmall,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1),
+                packageInfoAsync.when(
+                  data: (info) => Text(
+                      'v${info.version}',
+                      style: styles.bodySmall,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1),
+                  loading: () => const SizedBox.shrink(),
+                  error: (err, stack) => Text(
+                    'Error',
+                    style: styles.bodySmall,
+                  ),
+                )
               ]
             )
           ),
