@@ -373,7 +373,7 @@ class OdooService extends IBaseService {
 
       return success;
     } catch (e) {
-      throw Exception('Error al cambiar a pagada remesa');
+      throw Exception('Error al cambiar a pagada la remesa');
     }
   }
 
@@ -583,6 +583,41 @@ class OdooService extends IBaseService {
           .toList();
     } catch (e) {
       throw Exception('Error al obtener cuentas bancarias');
+    }
+  }
+
+  @override
+  Future<bool> confirmRemittance(Remittance remittance) async {
+    final body = {
+      'jsonrpc': '2.0',
+      'method': 'call',
+      'params': {
+        'model': 'remittance.line',
+        'method': 'action_confirm',
+        'args': [
+          [remittance.id]
+        ],
+        'kwargs': {},
+      },
+      'id': DateTime.now().millisecondsSinceEpoch,
+    };
+
+    try {
+      final response = await _sendJsonRequest(
+          'POST',
+          OdooEndpoints.callKw,
+          bodyParams: body);
+      print(response);
+      final bool success = response as bool;
+
+      if (!success) {
+        throw Exception(AppRemittanceMessages.noConfirmRemittance);
+      }
+
+      return success;
+    } catch (e) {
+      print(e);
+      throw Exception('Error al cambiar a confirmada la remesa');
     }
   }
 

@@ -14,6 +14,7 @@ abstract class IBaseService {
   Future<List<Remittance>> getRemittances({int? id});
   Future<bool> editRemittance(Remittance remittance);
   Future<bool> payRemittance(Remittance remittance);
+  Future<bool> confirmRemittance(Remittance remittance);
   Future<bool> deleteRemittance(Remittance remittance);
 
   Future<bool> editUser(String login);

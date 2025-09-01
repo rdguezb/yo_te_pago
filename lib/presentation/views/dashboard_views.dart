@@ -176,8 +176,9 @@ class DashboardViewState extends ConsumerState<DashboardView> {
 
                       RemittanceVerticalListView(
                         remittances: remittancesState.remittances,
+                        accounts: accountState.accounts,
                         currencies: currenciesState.currencies,
-                        accounts: accountState.accounts
+                        role: userRole
                       ),
 
                       const SizedBox(height: 10),
