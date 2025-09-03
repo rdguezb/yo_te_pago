@@ -24,6 +24,7 @@ class RemittanceTile extends ConsumerWidget {
   final String? role;
 
   const RemittanceTile({
+    super.key,
     required this.remittance,
     required this.account,
     required this.currency,
