@@ -2,14 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:yo_te_pago/business/config/constants/app_roles.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
+import 'package:yo_te_pago/business/domain/entities/bank_account.dart';
+import 'package:yo_te_pago/business/domain/entities/currency.dart';
 import 'package:yo_te_pago/business/providers/auth_notifier.dart';
 import 'package:yo_te_pago/business/providers/bank_account_provider.dart';
 import 'package:yo_te_pago/business/providers/currency_provider.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/business/providers/remittance_provider.dart';
-import 'package:yo_te_pago/presentation/widgets/dashboard/currency_vertical_listview_widget.dart';
-import 'package:yo_te_pago/presentation/widgets/dashboard/remittance_vertical_listview_widget.dart';
+import 'package:yo_te_pago/presentation/widgets/dashboard/remittance_tile.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/app_bar_widget.dart';
 
@@ -26,14 +28,9 @@ class DashboardView extends ConsumerStatefulWidget {
 
 class DashboardViewState extends ConsumerState<DashboardView> {
 
-  bool _dataLoadTriggered = false;
+  final TextEditingController _searchController = TextEditingController();
 
-  Future<void> _loadDataOnceAuthenticated() async {
-    if (_dataLoadTriggered) {
-      return;
-    }
-    _dataLoadTriggered = true;
-
+  Future<void> _loadData() async {
     try {
       await ref.read(currencyProvider.notifier).loadCurrencies();
       await ref.read(remittanceProvider.notifier).loadRemittances();
@@ -46,7 +43,6 @@ class DashboardViewState extends ConsumerState<DashboardView> {
           type: SnackBarType.error,
         );
       }
-      _dataLoadTriggered = false;
     }
   }
 
@@ -54,12 +50,16 @@ class DashboardViewState extends ConsumerState<DashboardView> {
   void initState() {
     super.initState();
 
-    Future.microtask(() {
-      final authState = ref.read(authNotifierProvider);
-      if (authState.isLoggedIn) {
-        _loadDataOnceAuthenticated();
-      }
-    });
+    Future.microtask(() => _loadData());
+    _searchController.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(() {});
+    _searchController.dispose();
+
+    super.dispose();
   }
 
   @override
@@ -68,87 +68,82 @@ class DashboardViewState extends ConsumerState<DashboardView> {
     final currenciesState = ref.watch(currencyProvider);
     final accountState = ref.watch(accountProvider);
     final remittancesState = ref.watch(remittanceProvider);
-    final odooService = ref.read(odooServiceProvider);
     final userRole = ref.read(odooSessionNotifierProvider).session?.role;
+    Widget? button;
 
-    ref.listen<bool>(authNotifierProvider.select((auth) => auth.isLoggedIn), (prev, next) {
-      if (next && !_dataLoadTriggered) {
-        _loadDataOnceAuthenticated();
-      }
-    });
     if (!authState.isLoggedIn || currenciesState.isLoading || remittancesState.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (accountState.errorMessage != null) {
+    if (accountState.errorMessage != null || currenciesState.errorMessage != null || remittancesState.errorMessage != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-                'Error al cargar cuentas de banco: ${accountState.errorMessage}',
-                textAlign: TextAlign.center),
+              'Error: ${accountState.errorMessage ?? currenciesState.errorMessage ?? remittancesState.errorMessage}',
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 10),
             ElevatedButton(
-              onPressed: () {
-                _dataLoadTriggered = false;
-                _loadDataOnceAuthenticated();
-              },
+              onPressed: _loadData,
               child: const Text(AppButtons.retry),
             ),
           ],
         ),
       );
     }
-    if (currenciesState.errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-                'Error al cargar monedas: ${currenciesState.errorMessage}',
-                textAlign: TextAlign.center),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () {
-                _dataLoadTriggered = false;
-                _loadDataOnceAuthenticated();
-              },
-              child: const Text(AppButtons.retry),
-            ),
-          ],
-        ),
+    final query = _searchController.text.toLowerCase();
+    final filteredRemittances = remittancesState.remittances.where((remittance) {
+      return remittance.customer.toLowerCase().contains(query);
+    }).toList();
+
+    if (userRole == ApiRole.delivery) {
+      button = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            heroTag: 'addRemittance',
+            onPressed: () {
+              context.go('/home/3');
+            },
+            tooltip: 'Remesar',
+            child: const Icon(Icons.add)
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton(
+            heroTag: 'viewRates',
+            onPressed: () {},
+            tooltip: 'Tasas',
+            child: const Icon(Icons.currency_exchange)
+          )
+        ]
       );
     }
-    if (remittancesState.errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+    else if (userRole == ApiRole.manager) {
+      button = Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-                'Error al cargar remesas: ${remittancesState.errorMessage}',
-                textAlign: TextAlign.center),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () {
-                _dataLoadTriggered = false;
-                _loadDataOnceAuthenticated();
-              },
-              child: const Text(AppButtons.retry),
+            FloatingActionButton(
+                heroTag: 'recharge',
+                onPressed: () {},
+                tooltip: 'Recargar',
+                child: const Icon(Icons.shopify)
             ),
-          ],
-        ),
+            const SizedBox(height: 10),
+            FloatingActionButton(
+                heroTag: 'viewRatesManager',
+                onPressed: () {},
+                tooltip: 'Tasas',
+                child: const Icon(Icons.currency_exchange)
+            )
+          ]
       );
     }
 
     return Scaffold(
-        floatingActionButton: userRole == 'delivery' ? FloatingActionButton(
-          onPressed: () {
-            context.go('/home/3');
-          },
-          tooltip: 'Remesar',
-          child: const Icon(Icons.account_balance_wallet_outlined),
-        ) : null,
+        floatingActionButton: button,
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         body: CustomScrollView(
           slivers: [
 
@@ -168,29 +163,64 @@ class DashboardViewState extends ConsumerState<DashboardView> {
               ),
             ),
 
-            SliverList(
-                delegate: SliverChildBuilderDelegate((context, index) => Column(
-                    children: [
+            SliverToBoxAdapter(
+              child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  child: TextFormField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                          hintText: 'Buscar por cliente',
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16.0)
+                      )
+                  )
+              )
+            ),
 
-                      const SizedBox(height: 5),
-
-                      RemittanceVerticalListView(
-                        remittances: remittancesState.remittances,
-                        accounts: accountState.accounts,
-                        currencies: currenciesState.currencies,
-                        role: userRole
-                      ),
-
-                      const SizedBox(height: 10),
-
-                      if (odooService.userRole == 'delivery')
-                        CurrencyVerticalListView(
-                          currencies: currenciesState.currencies,
-                        )
-                    ]
+            if (filteredRemittances.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Text(
+                    'No se encontraron remesas!',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.red),
+                  ),
                 ),
-                    childCount: 1)
-            )
+              )
+            else
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                      (BuildContext context, int index) {
+                    final remittance = filteredRemittances[index];
+                    final currency = currenciesState.currencies.firstWhere(
+                      (c) => c.id == remittance.currencyId,
+                      orElse: () => Currency(
+                        id: -1,
+                        name: 'N/A',
+                        fullName: 'Moneda Desconocida',
+                        symbol: '',
+                        rate: remittance.rate,
+                      ),
+                    );
+                    final account = accountState.accounts.firstWhere(
+                      (a) => a.id == remittance.bankAccountId,
+                      orElse: () => BankAccount(
+                        id: -1,
+                        bankName: 'No Banco',
+                        name: 'Cuenta desconocida',
+                      ),
+                    );
+                    return RemittanceTile(
+                      role: userRole,
+                      remittance: remittance,
+                      account: account,
+                      currency: currency,
+                    );
+                  },
+                  childCount: filteredRemittances.length,
+                ),
+              ),
           ]
         )
     );

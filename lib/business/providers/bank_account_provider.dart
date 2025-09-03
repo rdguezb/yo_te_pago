@@ -71,10 +71,7 @@ class BankAccountNotifier extends StateNotifier<BankAccountState> {
     }
   }
 
-  Future<void> refreshCurrencies() async {
-    state = state.copyWith(
-        isLoading: true,
-        errorMessage: null);
+  Future<void> refreshAccounts() async {
     await loadAccounts();
   }
 

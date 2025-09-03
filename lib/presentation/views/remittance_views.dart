@@ -193,7 +193,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
     _isFormEditable = true;
     final now = DateTime.now();
     _dateController.text = HumanFormats.toShortDate(now);
-    _timeController.text = HumanFormats.toShortDate(now);
+    _timeController.text = HumanFormats.toShortTime(now);
   }
 
   Future<void> _loadRemittance(int id) async {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:yo_te_pago/business/config/constants/app_roles.dart';
 
 class BottomBarItem {
   final String label;
@@ -19,30 +20,24 @@ const Map<String, BottomBarItem> appBottomNavigationItems = {
     label: 'Inicio',
     icon: Icons.home,
     path: '/home/0',
-    allowedRoles: ['delivery', 'user', 'manager']
+    allowedRoles: [ApiRole.delivery, ApiRole.user, ApiRole.manager]
   ),
   'Balance': BottomBarItem(
     label: 'Balance',
-    icon: Icons.query_stats,
+    icon: Icons.calculate_outlined,
     path: '/home/1',
-    allowedRoles: ['delivery', 'manager'],
+    allowedRoles: [ApiRole.delivery, ApiRole.manager],
   ),
   'Configurar': BottomBarItem(
     label: 'Configurar',
-    icon: Icons.settings_outlined,
+    icon: Icons.manage_accounts_outlined,
     path: '/home/2',
-    allowedRoles: ['delivery', 'user', 'manager']
+    allowedRoles: [ApiRole.delivery, ApiRole.user, ApiRole.manager]
   ),
-  // 'Remesar': BottomBarItem(
-  //   label: 'Remesar',
-  //   icon: Icons.account_balance_wallet_outlined,
-  //   path: '/home/3',
-  //   allowedRoles: ['delivery']
-  // ),
   'Salir': BottomBarItem(
     label: 'Salir',
     icon: Icons.logout,
     path: '',
-    allowedRoles: ['delivery', 'user', 'manager']
+    allowedRoles: [ApiRole.delivery, ApiRole.user, ApiRole.manager]
   )
 };

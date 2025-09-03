@@ -3,151 +3,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:yo_te_pago/business/config/constants/app_remittance_states.dart';
+import 'package:yo_te_pago/business/config/constants/app_roles.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/helpers/human_formats.dart';
 import 'package:yo_te_pago/business/domain/entities/bank_account.dart';
 import 'package:yo_te_pago/business/domain/entities/currency.dart';
 import 'package:yo_te_pago/business/domain/entities/remittance.dart';
-import 'package:yo_te_pago/presentation/widgets/shared/fancy_text.dart';
 import 'package:yo_te_pago/business/providers/remittance_provider.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/confirm_modal_dialog.dart';
 
 
-class RemittanceVerticalListView extends StatefulWidget {
-
-  final List<Remittance> remittances;
-  final List<Currency> currencies;
-  final List<BankAccount> accounts;
-  final String? role;
-
-  const RemittanceVerticalListView({
-    super.key,
-    required this.remittances,
-    required this.accounts,
-    required this.currencies,
-    this.role
-  });
-
-  @override
-  State<RemittanceVerticalListView> createState() => _RemittanceVerticalListViewState();
-
-}
-
-
-class _RemittanceVerticalListViewState extends State<RemittanceVerticalListView> {
-
-  final TextEditingController _searchController = TextEditingController();
-  List<Remittance> _filteredRemittances = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _filteredRemittances = widget.remittances;
-    _searchController.addListener(() {
-      _filterRemittances();
-    });
-  }
-
-  @override
-  void didUpdateWidget(RemittanceVerticalListView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.remittances != oldWidget.remittances) {
-      _filterRemittances();
-    }
-  }
-
-  void _filterRemittances() {
-    final query = _searchController.text.toLowerCase();
-    setState(() {
-      _filteredRemittances = widget.remittances.where((remittance) {
-        return remittance.customer.toLowerCase().contains(query);
-      }).toList();
-    });
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return SizedBox(
-      height: 425,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: TextFormField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Buscar por cliente',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.0)
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16.0)
-              )
-            )
-          ),
-          Expanded(
-              child: _filteredRemittances.isEmpty
-                ? FancyText(
-                    messageText: AppRemittanceMessages.noRemittance,
-                    iconData: Icons.sentiment_dissatisfied_rounded,
-                    color: colors.error)
-                : ListView.builder(
-                    itemCount: _filteredRemittances.length,
-                    scrollDirection: Axis.vertical,
-                    physics: const BouncingScrollPhysics(),
-                    itemBuilder: (context, index) {
-                      final remittance = _filteredRemittances[index];
-                      final currency = widget.currencies.firstWhere(
-                              (c) => c.id == remittance.currencyId,
-                              orElse: () => Currency(
-                                id: -1,
-                                name: 'N/A',
-                                fullName: 'Moneda Desconocida',
-                                symbol: '',
-                                rate: remittance.rate,
-                              ));
-                      final account = widget.accounts.firstWhere(
-                          (a) => a.id == remittance.bankAccountId,
-                          orElse: () => BankAccount(
-                            id: -1,
-                            bankName: 'No Banco',
-                            name: 'Cuenta desconocida'
-                          ));
-                      return _RemittanceTile(
-                          role: widget.role,
-                          remittance: remittance,
-                          account: account,
-                          currency: currency
-                      );
-                    })
-          ),
-        ],
-      ),
-    );
-  }
-
-}
-
-
-class _RemittanceTile extends ConsumerWidget {
+class RemittanceTile extends ConsumerWidget {
 
   final Remittance remittance;
   final Currency currency;
   final BankAccount account;
   final String? role;
 
-  const _RemittanceTile({
+  const RemittanceTile({
     required this.remittance,
     required this.account,
     required this.currency,
@@ -322,6 +198,7 @@ class _RemittanceTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     Color textColor = _getTileColor(context);
+    final colors = Theme.of(context).colorScheme;
     final userRole = role ?? '';
     final currencyRow = Row(
       children: [
@@ -332,7 +209,10 @@ class _RemittanceTile extends ConsumerWidget {
         const Spacer(),
         Text(
           HumanFormats.toAmount(remittance.rate * remittance.amount, currency.symbol),
-          style: TextStyle(color: textColor.withAlpha(178)),
+          style: TextStyle(
+              color: textColor.withAlpha(178),
+              fontSize: 16.0,
+              fontWeight: FontWeight.bold),
         )
       ],
     );
@@ -341,7 +221,10 @@ class _RemittanceTile extends ConsumerWidget {
         Expanded(
           child: Text(
             account.toString(),
-            style: TextStyle(color: textColor.withAlpha(178)),
+            style: TextStyle(
+              color: textColor.withAlpha(178),
+              fontSize: 16.0,
+              fontWeight: FontWeight.bold),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -363,27 +246,32 @@ class _RemittanceTile extends ConsumerWidget {
                       children: [
                         Text(
                             remittance.customer,
-                            style: TextStyle(color: textColor)),
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: 20.0,
+                              fontWeight: FontWeight.bold)),
                         const Spacer(),
-                        if ((remittance.isWaiting || remittance.isCanceled) && (userRole == 'delivery' || userRole == 'manager'))
+                        if ((remittance.isWaiting || remittance.isCanceled) && (userRole == ApiRole.delivery || userRole == ApiRole.manager))
                           IconButton(
                               icon: const Icon(Icons.delete_outline_sharp),
-                              color: textColor,
+                              color: colors.error,
                               onPressed: () => _onDelete(context, ref)),
-                        if (remittance.isWaiting && userRole == 'delivery')
+                        if (remittance.isWaiting && userRole == ApiRole.delivery)
                           IconButton(
                               icon: const Icon(Icons.mode_edit_rounded),
                               color: textColor,
                               onPressed: () => context.go('/remittance/edit/${remittance.id}')),
-                        if (remittance.isConfirmed &&  userRole == 'delivery')
+                        if (remittance.isConfirmed &&  userRole == ApiRole.delivery)
                           IconButton(
+                              iconSize: 40.0,
                               icon: const Icon(Icons.check_rounded),
-                              color: textColor,
+                              color: colors.primary,
                               onPressed: () => _onPay(context, ref)),
-                        if (remittance.isWaiting && userRole == 'user')
+                        if (remittance.isWaiting && userRole == ApiRole.user)
                           IconButton(
+                              iconSize: 40.0,
                               icon: const Icon(Icons.thumb_up_alt_rounded),
-                              color: textColor,
+                              color: colors.primary,
                               onPressed: () => _onConfirm(context, ref)),
                       ]
                     ),
