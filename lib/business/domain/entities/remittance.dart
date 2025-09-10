@@ -7,11 +7,16 @@ class Remittance {
   String customer;
   double amount;
   DateTime createdAt;
+  String state;
   int currencyId;
-  int bankAccountId;
   double rate;
+  String currencyName;
+  String currencySymbol;
+  int bankAccountId;
+  String bankAccountName;
+  String? bankName;
   String? code;
-  String? state;
+
 
   Remittance({
     this.id,
@@ -19,10 +24,14 @@ class Remittance {
     this.code,
     required this.createdAt,
     required this.amount,
-    this.state,
+    required this.state,
     required this.currencyId,
+    required this.currencyName,
+    required this.currencySymbol,
+    required this.rate,
     required this.bankAccountId,
-    required this.rate
+    required this.bankAccountName,
+    this.bankName
   });
 
   factory Remittance.fromJson(Map<String, dynamic> json) {
@@ -35,8 +44,12 @@ class Remittance {
         amount: json['amount']?.toDouble(),
         state: json['state'],
         currencyId: (json['currency_id'] as int?) ?? 0,
+        currencyName: json['currency_name'],
+        currencySymbol: json['currency_symbol'],
+        rate: json['rate']?.toDouble(),
         bankAccountId: (json['bank_id'] as int?) ?? 0,
-        rate: json['rate']?.toDouble()
+        bankAccountName: json['acc_number'],
+        bankName: json['bank_name']
     );
   }
 
@@ -45,6 +58,7 @@ class Remittance {
   bool get isWaiting => state == 'waiting';
   bool get isCanceled => state == 'cancelled';
   String get createdAtToStr => HumanFormats.toShortDate(createdAt);
+  double get total => rate * amount;
 
   Remittance copyWith({
     int? id,
@@ -52,11 +66,16 @@ class Remittance {
     String? code,
     DateTime? createdAt,
     double? amount,
-    int? currencyId,
-    int? bankAccountId,
     String? state,
-    double? rate
+    int? currencyId,
+    String? currencyName,
+    String? currencySymbol,
+    double? rate,
+    int? bankAccountId,
+    String? bankAccountName,
+    String? bankName
   }) {
+
     return Remittance(
       id: id ?? this.id,
       customer: customer ?? this.customer,
@@ -65,12 +84,17 @@ class Remittance {
       amount: amount ?? this.amount,
       state: state ?? this.state,
       currencyId: currencyId ?? this.currencyId,
+      currencyName: currencyName ?? this.currencyName,
+      currencySymbol: currencySymbol ?? this.currencySymbol,
+      rate: rate ?? this.rate,
       bankAccountId: bankAccountId ?? this.bankAccountId,
-      rate: rate ?? this.rate
+      bankAccountName: bankAccountName ?? this.bankAccountName,
+      bankName: bankName ?? this.bankName
     );
   }
 
   Map<String, dynamic> toMap() {
+
     return {
       'name': customer,
       'code': code ?? '',
@@ -80,5 +104,11 @@ class Remittance {
       'bank_id': bankAccountId
     };
   }
+
+  String currencyInfo() => '$amount | $currencyName [$rate] | $createdAtToStr';
+
+  String totalToString() => HumanFormats.toAmount(total, currencySymbol);
+
+  String bankAccountInfo() => '$bankAccountName - $bankName';
 
 }

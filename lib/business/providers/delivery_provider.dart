@@ -1,29 +1,27 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:yo_te_pago/business/config/constants/app_network_states.dart';
-import 'package:yo_te_pago/business/domain/entities/currency.dart';
+import 'package:yo_te_pago/business/domain/entities/user.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/infrastructure/services/odoo_services.dart';
 
-
-class CurrencyState {
-  final List<Currency> currencies;
+class DeliveryState {
+  final List<User> deliveries;
   final bool isLoading;
   final String? errorMessage;
 
-  CurrencyState({
-    this.currencies = const [],
+  DeliveryState({
+    this.deliveries = const [],
     this.isLoading = false,
     this.errorMessage,
   });
 
-  CurrencyState copyWith({
-    List<Currency>? currencies,
+  DeliveryState copyWith({
+    List<User>? deliveries,
     bool? isLoading,
     String? errorMessage,
   }) {
-    return CurrencyState(
-      currencies: currencies ?? this.currencies,
+    return DeliveryState(
+      deliveries: deliveries ?? this.deliveries,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage ?? this.errorMessage,
     );
@@ -31,13 +29,13 @@ class CurrencyState {
 }
 
 
-class CurrencyNotifier extends StateNotifier<CurrencyState> {
+class DeliveryNotifier extends StateNotifier<DeliveryState> {
 
   final Ref _ref;
 
-  CurrencyNotifier(this._ref) : super(CurrencyState());
+  DeliveryNotifier(this._ref) : super(DeliveryState());
 
-  Future<void> loadCurrencies() async {
+  Future<void> loadDeliveries() async {
     if (state.isLoading) {
       return;
     }
@@ -57,31 +55,31 @@ class CurrencyNotifier extends StateNotifier<CurrencyState> {
         errorMessage: null);
 
     try {
-      final List<Currency> currencies = await odooService.getCurrencies();
+      final List<User> deliveries = await odooService.getDeliveries();
       state = state.copyWith(
-        currencies: currencies,
+        deliveries: deliveries,
         isLoading: false,
         errorMessage: null,
       );
     } catch (e) {
       state = state.copyWith(
-        isLoading: false,
-        errorMessage: 'Error al cargar monedas'
+          isLoading: false,
+          errorMessage: 'Error al cargar remeseros'
       );
     }
   }
 
-  Future<void> refreshCurrencies() async {
+  Future<void> refreshRates() async {
     state = state.copyWith(
         isLoading: true,
         errorMessage: null);
-    await loadCurrencies();
+    await loadDeliveries();
   }
 
 }
 
 
-final currencyProvider = StateNotifierProvider<CurrencyNotifier, CurrencyState>((ref) {
+final deliveryProvider = StateNotifierProvider<DeliveryNotifier, DeliveryState>((ref) {
 
-  return CurrencyNotifier(ref);
+  return DeliveryNotifier(ref);
 });

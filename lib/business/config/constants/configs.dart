@@ -6,5 +6,6 @@ abstract class AppConfig {
   static const maxYear = 2035;
 
   static const rootPath = '/home/0';
+  static const ratePath = '/home/2';
 
 }

@@ -16,25 +16,31 @@ class BottomBarItem {
 }
 
 const Map<String, BottomBarItem> appBottomNavigationItems = {
-  'Inicio': BottomBarItem(
+  'home': BottomBarItem(
     label: 'Inicio',
     icon: Icons.home,
     path: '/home/0',
     allowedRoles: [ApiRole.delivery, ApiRole.user, ApiRole.manager]
   ),
-  'Balance': BottomBarItem(
+  'balance': BottomBarItem(
     label: 'Balance',
     icon: Icons.calculate_outlined,
     path: '/home/1',
     allowedRoles: [ApiRole.delivery, ApiRole.manager],
   ),
-  'Configurar': BottomBarItem(
+  'rate': BottomBarItem(
+      label: 'Tasas de Cambio',
+      icon: Icons.currency_exchange,
+      path: '/home/2',
+      allowedRoles: [ApiRole.delivery, ApiRole.manager]
+  ),
+  'settings': BottomBarItem(
     label: 'Configurar',
     icon: Icons.manage_accounts_outlined,
-    path: '/home/2',
+    path: '/home/3',
     allowedRoles: [ApiRole.delivery, ApiRole.user, ApiRole.manager]
   ),
-  'Salir': BottomBarItem(
+  'logout': BottomBarItem(
     label: 'Salir',
     icon: Icons.logout,
     path: '',

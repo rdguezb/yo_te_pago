@@ -5,5 +5,6 @@ abstract class AppValidationMessages {
   static const positiveNumber = 'Debe ser mayor que cero';
   static const currencySelection  = 'Seleccione una moneda';
   static const accountSelection  = 'Seleccione una cuenta';
+  static const deliverySelection = 'Seleccione un usuario';
 
 }

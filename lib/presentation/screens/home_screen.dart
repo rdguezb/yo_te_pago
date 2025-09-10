@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:yo_te_pago/presentation/views/dashboard_views.dart';
-import 'package:yo_te_pago/presentation/views/remittance_views.dart';
+import 'package:yo_te_pago/presentation/views/rate_views.dart';
 import 'package:yo_te_pago/presentation/views/report_views.dart';
 import 'package:yo_te_pago/presentation/views/setting_views.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/bottom_bar_widget.dart';
@@ -28,8 +28,8 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   final _pages =  const <Widget>[
     DashboardView(),
     ReportView(),
+    RatesView(),
     SettingsView(),
-    RemittanceView(),
   ];
 
   @override

@@ -13,6 +13,7 @@ abstract class AppFormLabels {
   static const time = 'Hora';
   static const name = 'Nombre';
   static const lastName = 'Apellidos';
+  static const delivery = 'Seleccione un usuario';
 
 }
 

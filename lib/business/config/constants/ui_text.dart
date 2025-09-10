@@ -8,5 +8,8 @@ abstract class AppTitles {
   static const registration = 'Registrarme';
   static const confirmation = 'Confirmar';
   static const error = 'Error';
+  static const rateCreate = 'Crear Tasa de Cambio';
+  static const rateEdit = 'Editar Tasa de Cambio';
+
 
 }

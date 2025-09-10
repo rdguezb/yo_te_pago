@@ -11,5 +11,13 @@ abstract class AppRemittanceMessages {
   static const noEditedRemittance = 'No se pudo editar la remesa !';
   static const noPaidRemittance = 'No se pudo cambiar a pagada la remesa !';
   static const noConfirmRemittance = 'No se pudo cambiar a confirmada la remesa !';
+  static const noRate = 'No se encontraron tasas de cambio !';
+  static const noCurrencies = 'No se encontraron monedas disponibles !';
+  static const rateChanged = 'Tasa cambiada con exito';
+  static const rateChangedFail = 'La tasa no pudo ser cambiada !';
+  static const rateDeletedSuccess = 'Tasa eliminada exitosamente';
+  static const rateDeletedError = 'No se pudo eliminar la tasa !';
+  static const noDelivery = 'No se encontraron remeseros !';
+  static const noData = 'No se encontraron monedas disponibles ni remeseros !';
 
 }

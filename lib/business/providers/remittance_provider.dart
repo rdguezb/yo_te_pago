@@ -25,7 +25,7 @@ class RemittanceState {
     return RemittanceState(
       remittances: remittances ?? this.remittances,
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: errorMessage
     );
   }
 }
@@ -62,7 +62,7 @@ class RemittanceNotifier extends StateNotifier<RemittanceState> {
       state = state.copyWith(
         remittances: remittances,
         isLoading: false,
-        errorMessage: null,
+        errorMessage: null
       );
     } catch (e) {
       state = state.copyWith(

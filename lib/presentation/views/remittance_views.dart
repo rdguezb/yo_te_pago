@@ -12,10 +12,10 @@ import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/helpers/form_fields_validators.dart';
 import 'package:yo_te_pago/business/config/helpers/human_formats.dart';
 import 'package:yo_te_pago/business/domain/entities/bank_account.dart';
-import 'package:yo_te_pago/business/domain/entities/currency.dart';
+import 'package:yo_te_pago/business/domain/entities/rate.dart';
 import 'package:yo_te_pago/business/domain/entities/remittance.dart';
 import 'package:yo_te_pago/business/providers/bank_account_provider.dart';
-import 'package:yo_te_pago/business/providers/currency_provider.dart';
+import 'package:yo_te_pago/business/providers/rate_provider.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/business/providers/remittance_provider.dart';
 import 'package:yo_te_pago/presentation/widgets/input/custom_text_form_fields.dart';
@@ -63,7 +63,7 @@ class _RemittanceViewState extends State<RemittanceView> {
                 padding: const EdgeInsets.all(24.0),
                 child: _RemittanceForm(id: widget.id)
             ),
-          )),
+          ))
     );
   }
 
@@ -102,13 +102,13 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
       return false;
     }
     final odooService = ref.read(odooServiceProvider);
-    final currenciesState = ref.read(currencyProvider);
+    final currenciesState = ref.read(rateProvider);
     final accountState = ref.read(accountProvider);
 
-    if (currenciesState.currencies.isEmpty) {
+    if (currenciesState.rates.isEmpty) {
       showCustomSnackBar(
         context: context,
-        message: AppNetworkMessages.errorNoCurrencies,
+        message: AppNetworkMessages.errorNoRates,
         type: SnackBarType.error,
       );
       return false;
@@ -125,9 +125,9 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
     final amount = double.tryParse(_amountController.text) ?? 0.0;
     final code = _codeController.text.trim();
     final createDate = HumanFormats.toDateTime('${_dateController.text} ${_timeController.text}');
-    final currency = currenciesState.currencies.firstWhere(
+    final currency = currenciesState.rates.firstWhere(
       (c) => c.id.toString() == _selectedCurrencyId,
-      orElse: () => throw Exception(AppNetworkMessages.errorNoCurrencies)
+      orElse: () => throw Exception(AppNetworkMessages.errorNoRates)
     );
     final bankAccount = accountState.accounts.firstWhere(
       (c) => c.id.toString() == _selectedAccountId,
@@ -135,14 +135,19 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
     );
 
     final remittanceToSave = Remittance(
-        id: _remittance?.id,
-        customer: customer,
-        amount: amount,
-        code: code,
-        currencyId: currency.id,
-        bankAccountId: bankAccount.id,
-        createdAt: createDate,
-        rate: currency.rate
+      id: _remittance?.id,
+      customer: customer,
+      amount: amount,
+      code: code,
+      createdAt: createDate,
+      state: _remittance != null ? _remittance!.state : 'waiting',
+      currencyId: currency.id!,
+      currencyName: currency.name,
+      currencySymbol: currency.symbol,
+      rate: currency.rate,
+      bankAccountId: bankAccount.id,
+      bankAccountName: bankAccount.name,
+      bankName: bankAccount.bankName
     );
 
     try {
@@ -258,7 +263,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
     super.initState();
 
     Future.microtask(() {
-      ref.read(currencyProvider.notifier).loadCurrencies();
+      ref.read(rateProvider.notifier).loadRates();
       ref.read(accountProvider.notifier).loadAccounts();
     });
     if (widget.id != null) {
@@ -284,10 +289,10 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final currenciesState = ref.watch(currencyProvider);
-    final List<Currency> currencies = currenciesState.currencies;
-    final bool isLoadingCurrencies = currenciesState.isLoading;
-    final String? currencyErrorMessage = currenciesState.errorMessage;
+    final ratesState = ref.watch(rateProvider);
+    final List<Rate> rates = ratesState.rates;
+    final bool isLoadingRates = ratesState.isLoading;
+    final String? rateErrorMessage = ratesState.errorMessage;
     final accountState = ref.watch(accountProvider);
     final List<BankAccount> accounts = accountState.accounts;
     final bool isLoadingAccounts = accountState.isLoading;
@@ -295,10 +300,10 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
     Widget currencyComboBox;
     Widget accountComboBox;
 
-    ref.listen<CurrencyState>(currencyProvider, (previousState, newState) {
-      if (!newState.isLoading && newState.currencies.isNotEmpty && _isFormEditable && _selectedCurrencyId.isEmpty && widget.id == null) {
+    ref.listen<RateState>(rateProvider, (previousState, newState) {
+      if (!newState.isLoading && newState.rates.isNotEmpty && _isFormEditable && _selectedCurrencyId.isEmpty && widget.id == null) {
         setState(() {
-          _selectedCurrencyId = newState.currencies.first.id.toString();
+          _selectedCurrencyId = newState.rates.first.id.toString();
         });
       }
     });
@@ -323,28 +328,28 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
       );
     }
 
-    if (isLoadingCurrencies) {
+    if (isLoadingRates) {
       currencyComboBox = const Center(child: CircularProgressIndicator());
-    } else if (currencyErrorMessage != null) {
+    } else if (rateErrorMessage != null) {
       currencyComboBox = Column(
           children: [
             Text(
-                'Error al cargar monedas: $currencyErrorMessage. Por favor, intente recargar.',
+                'Error al cargar tasas: $rateErrorMessage. Por favor, intente recargar.',
                 style: const TextStyle(color: Colors.red),
                 textAlign: TextAlign.center
             ),
             const SizedBox(height: 10),
             ElevatedButton(
                 onPressed: () {
-                  ref.read(currencyProvider.notifier).loadCurrencies();
+                  ref.read(rateProvider.notifier).loadRates();
                 },
                 child: const Text(AppButtons.retry)
             ),
           ]
       );
-    } else if (currencies.isEmpty) {
+    } else if (rates.isEmpty) {
       currencyComboBox = Text(
-          AppNetworkMessages.errorNoCurrencies,
+          AppNetworkMessages.errorNoRates,
           style: const TextStyle(color: Colors.red),
           textAlign: TextAlign.center
       );
@@ -354,11 +359,11 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
           label: AppFormLabels.currency,
           isRequired: true,
           selectedId: _selectedCurrencyId,
-          items: currencies.map((currency) =>
+          items: rates.map((rate) =>
               DropdownMenuItem<String>(
-                value: '${currency.id}',
+                value: '${rate.id}',
                 child: Text(
-                  currency.toString(),
+                  rate.toString(),
                   overflow: TextOverflow.ellipsis)
               )).toList(),
           validator: (value) {

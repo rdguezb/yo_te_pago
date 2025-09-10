@@ -4,11 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:yo_te_pago/business/config/constants/app_roles.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
-import 'package:yo_te_pago/business/domain/entities/bank_account.dart';
-import 'package:yo_te_pago/business/domain/entities/currency.dart';
 import 'package:yo_te_pago/business/providers/auth_notifier.dart';
-import 'package:yo_te_pago/business/providers/bank_account_provider.dart';
-import 'package:yo_te_pago/business/providers/currency_provider.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/business/providers/remittance_provider.dart';
 import 'package:yo_te_pago/presentation/widgets/dashboard/remittance_tile.dart';
@@ -32,9 +28,7 @@ class DashboardViewState extends ConsumerState<DashboardView> {
 
   Future<void> _loadData() async {
     try {
-      await ref.read(currencyProvider.notifier).loadCurrencies();
       await ref.read(remittanceProvider.notifier).loadRemittances();
-      await ref.read(accountProvider.notifier).loadAccounts();
     } catch (e) {
       if (mounted) {
         showCustomSnackBar(
@@ -44,6 +38,32 @@ class DashboardViewState extends ConsumerState<DashboardView> {
         );
       }
     }
+  }
+
+  Widget? _buildFloatingActionButton(String? role) {
+
+      if (role == ApiRole.delivery) {
+
+        return FloatingActionButton(
+            heroTag: 'addRemittance',
+            onPressed: () => context.go('/remittance/create'),
+            tooltip: 'Remesar',
+            child: const Icon(Icons.add)
+        );
+      }
+      else if (role == ApiRole.manager) {
+
+        return FloatingActionButton(
+            heroTag: 'recharge',
+            onPressed: () {
+  //   TODO Falta hacer el metodo
+            },
+            tooltip: 'Recargar',
+            child: const Icon(Icons.shopify)
+        );
+      }
+
+      return null;
   }
 
   @override
@@ -65,23 +85,20 @@ class DashboardViewState extends ConsumerState<DashboardView> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authNotifierProvider);
-    final currenciesState = ref.watch(currencyProvider);
-    final accountState = ref.watch(accountProvider);
     final remittancesState = ref.watch(remittanceProvider);
     final userRole = ref.read(odooSessionNotifierProvider).session?.role;
-    Widget? button;
 
-    if (!authState.isLoggedIn || currenciesState.isLoading || remittancesState.isLoading) {
+    if (!authState.isLoggedIn || remittancesState.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (accountState.errorMessage != null || currenciesState.errorMessage != null || remittancesState.errorMessage != null) {
+    if (remittancesState.errorMessage != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'Error: ${accountState.errorMessage ?? currenciesState.errorMessage ?? remittancesState.errorMessage}',
+              'Error: ${remittancesState.errorMessage}',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 10),
@@ -98,51 +115,8 @@ class DashboardViewState extends ConsumerState<DashboardView> {
       return remittance.customer.toLowerCase().contains(query);
     }).toList();
 
-    if (userRole == ApiRole.delivery) {
-      button = Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton(
-            heroTag: 'addRemittance',
-            onPressed: () {
-              context.go('/home/3');
-            },
-            tooltip: 'Remesar',
-            child: const Icon(Icons.add)
-          ),
-          const SizedBox(height: 10),
-          FloatingActionButton(
-            heroTag: 'viewRates',
-            onPressed: () {},
-            tooltip: 'Tasas',
-            child: const Icon(Icons.currency_exchange)
-          )
-        ]
-      );
-    }
-    else if (userRole == ApiRole.manager) {
-      button = Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FloatingActionButton(
-                heroTag: 'recharge',
-                onPressed: () {},
-                tooltip: 'Recargar',
-                child: const Icon(Icons.shopify)
-            ),
-            const SizedBox(height: 10),
-            FloatingActionButton(
-                heroTag: 'viewRatesManager',
-                onPressed: () {},
-                tooltip: 'Tasas',
-                child: const Icon(Icons.currency_exchange)
-            )
-          ]
-      );
-    }
-
     return Scaffold(
-        floatingActionButton: button,
+        floatingActionButton: _buildFloatingActionButton(userRole),
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         body: CustomScrollView(
           slivers: [
@@ -184,38 +158,19 @@ class DashboardViewState extends ConsumerState<DashboardView> {
                 child: Center(
                   child: Text(
                     'No se encontraron remesas!',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.red),
-                  ),
-                ),
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.red)
+                  )
+                )
               )
             else
               SliverList(
                 delegate: SliverChildBuilderDelegate(
                       (BuildContext context, int index) {
                     final remittance = filteredRemittances[index];
-                    final currency = currenciesState.currencies.firstWhere(
-                      (c) => c.id == remittance.currencyId,
-                      orElse: () => Currency(
-                        id: -1,
-                        name: 'N/A',
-                        fullName: 'Moneda Desconocida',
-                        symbol: '',
-                        rate: remittance.rate,
-                      ),
-                    );
-                    final account = accountState.accounts.firstWhere(
-                      (a) => a.id == remittance.bankAccountId,
-                      orElse: () => BankAccount(
-                        id: -1,
-                        bankName: 'No Banco',
-                        name: 'Cuenta desconocida',
-                      ),
-                    );
+
                     return RemittanceTile(
                       role: userRole,
-                      remittance: remittance,
-                      account: account,
-                      currency: currency,
+                      remittance: remittance
                     );
                   },
                   childCount: filteredRemittances.length,
