@@ -53,14 +53,16 @@ class DashboardViewState extends ConsumerState<DashboardView> {
       }
       else if (role == ApiRole.manager) {
 
-        return FloatingActionButton(
-            heroTag: 'recharge',
-            onPressed: () {
-  //   TODO Falta hacer el metodo
-            },
-            tooltip: 'Recargar',
-            child: const Icon(Icons.shopify)
-        );
+        return null;
+
+  //       return FloatingActionButton(
+  //           heroTag: 'recharge',
+  //           onPressed: () {
+  // //   TODO Falta hacer el metodo
+  //           },
+  //           tooltip: 'Recargar',
+  //           child: const Icon(Icons.shopify)
+  //       );
       }
 
       return null;

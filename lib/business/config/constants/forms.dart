@@ -26,6 +26,9 @@ abstract class AppButtons {
   static const retry = 'Reintentar';
   static const delete = 'Eliminar';
   static const confirm = 'Confirmar';
+  static const inCash = 'Entrada';
+  static const outCash = 'Salida';
+
 
 }
 

@@ -6,6 +6,7 @@ import 'package:yo_te_pago/business/providers/auth_notifier.dart';
 import 'package:yo_te_pago/presentation/screens/home_screen.dart';
 import 'package:yo_te_pago/presentation/screens/loading_screen.dart';
 import 'package:yo_te_pago/presentation/screens/register_screen.dart';
+import 'package:yo_te_pago/presentation/views/balance_form_views.dart';
 import 'package:yo_te_pago/presentation/views/rate_form_views.dart';
 import 'package:yo_te_pago/presentation/views/remittance_views.dart';
 
@@ -13,12 +14,13 @@ import 'package:yo_te_pago/presentation/views/remittance_views.dart';
 final appRouterProvider = Provider<GoRouter>((ref) {
 
   final authNotifier = ref.watch(authNotifierProvider);
+  const String pathLoading = '/loading';
   const String pathHome = '/home/:page';
   const String pathRegister = '/register';
   const String pathRemittance = '/remittance/edit/:id';
   const String pathRemittanceCreate = '/remittance/create';
   const String pathRateCreate = '/rate/create';
-  const String pathLoading = '/loading';
+  const String pathBalanceAdd = '/balance/create';
 
   String getHomePath(int pageIndex) => '/home/$pageIndex';
 
@@ -67,6 +69,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: pathRateCreate,
         name: RateFormView.name,
         builder: (context, state) => const RateFormView(),
+      ),
+      GoRoute(
+        path: pathBalanceAdd,
+        name: BalanceFormView.name,
+        builder: (context, state) => const BalanceFormView(),
       )
     ],
 

@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:yo_te_pago/business/config/constants/api_const.dart';
 import 'package:yo_te_pago/business/config/constants/app_record_messages.dart';
-import 'package:yo_te_pago/business/config/constants/configs.dart';
+import 'package:yo_te_pago/business/config/constants/bottom_bar_items.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/helpers/form_fields_validators.dart';
@@ -208,7 +208,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
                 try {
                   final success = await _saveData();
                   if (success && context.mounted) {
-                    context.go(AppConfig.rootPath);
+                    context.go(appBottomNavigationItems['home']!.path);
                   }
                 } catch (e) {
                   if (!context.mounted) {

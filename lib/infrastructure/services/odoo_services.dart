@@ -88,7 +88,7 @@ class OdooService extends IBaseService {
           if (errorDetails != null && errorDetails.containsKey('name')) {
             specificMessage =  '$specificMessage - ${errorDetails['name']}';
           }
-          if (specificMessage != null && specificMessage.isNotEmpty) {
+          if (specificMessage.isNotEmpty) {
             throw Exception(specificMessage);
           }
 
@@ -819,5 +819,37 @@ class OdooService extends IBaseService {
     }
   }
 
+  @override
+  Future<bool> addBalance(Balance balance) async {
+    final body = {
+      'jsonrpc': '2.0',
+      'method': 'call',
+      'params': {
+        'model': 'res.partner.currency.balance',
+        'method': 'update_balance',
+        'args': [{}, balance.partnerId, balance.currencyId, balance.debit, balance.credit],
+        'kwargs': {
+          'context': {}
+        },
+      },
+      'id': DateTime.now().millisecondsSinceEpoch,
+    };
+
+    try {
+      final response = await _sendJsonRequest(
+          'POST',
+          OdooEndpoints.callKw,
+          bodyParams: body);
+      final bool success = response != null;
+
+      if (!success) {
+        throw Exception(AppRecordMessages.registerFailure);
+      }
+
+      return success;
+    } catch (e) {
+      throw Exception('Error al actualizar saldo');
+    }
+  }
 
 }

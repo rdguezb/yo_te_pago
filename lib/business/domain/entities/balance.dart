@@ -1,36 +1,58 @@
+import 'package:yo_te_pago/business/config/helpers/human_formats.dart';
+
 class Balance {
 
-  final String name;
-  final String fullName;
-  final double debit;
-  final double credit;
-  final double balance;
+  int currencyId;
+  String name;
+  String fullName;
+  String symbol;
+  double debit;
+  double credit;
+  double balance;
+  int partnerId;
+  String partnerName;
+
 
 
   Balance({
+    required this.currencyId,
     required this.name,
     required this.fullName,
-    required this.debit,
-    required this.credit,
+    required this.symbol,
+    required this.partnerId,
+    required this.partnerName,
+    required this.debit,        // este valor es el que paga el remesero de su saldo
+    required this.credit,       // este valor es el que le dan al remesero
     this.balance = 0
   });
 
-  double get amount {
-    return credit - debit;
-  }
+  double get total => debit - credit;
+
+  String get currency => '[$name] $fullName';
 
   factory Balance.fromJson(Map<String, dynamic> json) {
 
     return Balance(
+        currencyId: (json['currency_id'] as int?) ?? 0,
         name: json['name'],
         fullName: json['fullName'],
+        symbol: json['symbol'],
+        partnerId: (json['partner_id'] as int?) ?? 0,
+        partnerName: json['partner_name'],
         debit: json['debit'],
         credit: json['credit'],
         balance: json['balance']
     );
   }
 
-}
+  String totalToString() => HumanFormats.toAmount(total, symbol);
 
-// el debit - es lo que paga el remesero
-// el credit- es lo que el banco paga al remesero
+  String balanceToString(String sign) {
+    if (sign == 'D') {
+      return 'D: ${HumanFormats.toAmount(debit, symbol)}';
+    }
+
+    return 'C: ${HumanFormats.toAmount(credit, symbol)}';
+  }
+
+}

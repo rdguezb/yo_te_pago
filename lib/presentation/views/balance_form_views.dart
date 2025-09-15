@@ -10,6 +10,7 @@ import 'package:yo_te_pago/business/config/constants/bottom_bar_items.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/helpers/form_fields_validators.dart';
+import 'package:yo_te_pago/business/domain/entities/balance.dart';
 import 'package:yo_te_pago/business/providers/delivery_provider.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/business/providers/rate_provider.dart';
@@ -17,68 +18,64 @@ import 'package:yo_te_pago/presentation/widgets/input/custom_text_form_fields.da
 import 'package:yo_te_pago/presentation/widgets/input/dropdown_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 
+class BalanceFormView extends StatefulWidget {
 
-class RateFormView extends StatefulWidget {
+  static const name = 'balance-form-views';
 
-  static const name = 'rate-form-views';
-
-  const RateFormView({
-    super.key,
+  const BalanceFormView({
+    super.key
   });
 
   @override
-  State<RateFormView> createState() => _RateFormViewState();
+  State<BalanceFormView> createState() => _BalanceFormViewState();
 
 }
 
-
-class _RateFormViewState extends State<RateFormView> {
+class _BalanceFormViewState extends State<BalanceFormView> {
 
   @override
   Widget build(BuildContext context) {
+    String location = appBottomNavigationItems['balance']!.path;
 
     return Scaffold(
         appBar: AppBar(
-            title: Text(AppTitles.rateCreate),
+            title: Text(AppTitles.balanceCreate),
             centerTitle: true,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new_rounded),
-              onPressed: () => context.go(appBottomNavigationItems['rate']!.path),
+              onPressed: () => context.go(location),
             )
         ),
         body: SafeArea(
             child: SingleChildScrollView(
               child: Padding(
                   padding: const EdgeInsets.all(24.0),
-                  child: _RateForm()
+                  child: _BalanceForm()
               ),
             )
         )
     );
   }
-
 }
 
+class _BalanceForm extends ConsumerStatefulWidget {
 
-class _RateForm extends ConsumerStatefulWidget {
-
-  const _RateForm();
+  const _BalanceForm();
 
   @override
-  ConsumerState<_RateForm> createState() => _RateFormState();
+  ConsumerState<_BalanceForm> createState() => _BalanceFormState();
 
 }
 
-
-class _RateFormState extends ConsumerState<_RateForm> {
+class _BalanceFormState extends ConsumerState<_BalanceForm> {
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   String _selectedCurrencyId = '';
   String _selectedDeliveryId = '';
 
-  final TextEditingController _rateController = TextEditingController();
+  final TextEditingController _amountController = TextEditingController();
 
-  Future<bool> _saveData() async {
+  Future<bool> _saveData(int sign) async {
     if (!mounted) {
       return false;
     }
@@ -87,8 +84,10 @@ class _RateFormState extends ConsumerState<_RateForm> {
     final currencies = rateState.currencies;
     final deliveries = deliveryState.deliveries;
     final odooService = ref.read(odooServiceProvider);
+    double credit = 0;
+    double debit = 0;
 
-    final amount = double.tryParse(_rateController.text) ?? 0.0;
+    final amount = double.tryParse(_amountController.text) ?? 0.0;
     if (amount == 0) {
       showCustomSnackBar(
         context: context,
@@ -97,6 +96,12 @@ class _RateFormState extends ConsumerState<_RateForm> {
       );
       return false;
     }
+    if (sign > 0) {
+      credit = amount;
+    } else {
+      debit = amount;
+    }
+
     if (currencies.isEmpty) {
       showCustomSnackBar(
         context: context,
@@ -119,25 +124,31 @@ class _RateFormState extends ConsumerState<_RateForm> {
     );
     final delivery = deliveries.firstWhere(
             (c) => c.id.toString() == _selectedDeliveryId,
-        orElse: () => throw Exception(AppNetworkMessages.errorNoBankAccount)
+        orElse: () => throw Exception(AppNetworkMessages.errorNoDeliveries)
     );
-    final rateToSave = currency.copyWith(
-      rate: amount,
-      partnerId: delivery.id
-    );
+    if (sign > 0) {
+
+    }
+    final balance = Balance(
+        currencyId: currency.currencyId,
+        name: currency.name,
+        fullName: currency.fullName,
+        symbol: currency.symbol,
+        partnerId: delivery.id!,
+        partnerName: delivery.name,
+        debit: debit,
+        credit: credit);
 
     try {
-      if (rateToSave.id == null) {
-        await odooService.addRate(rateToSave);
-        if (!mounted) {
-          return false;
-        }
-        showCustomSnackBar(
-          context: context,
-          message: AppRecordMessages.registerSuccess,
-          type: SnackBarType.success,
-        );
+      await odooService.addBalance(balance);
+      if (!mounted) {
+        return false;
       }
+      showCustomSnackBar(
+        context: context,
+        message: AppRecordMessages.registerSuccess,
+        type: SnackBarType.success,
+      );
 
       return true;
     } catch (e) {
@@ -154,7 +165,7 @@ class _RateFormState extends ConsumerState<_RateForm> {
   }
 
   void _clearControllers() {
-    _rateController.clear();
+    _amountController.clear();
     _selectedCurrencyId = '';
     _selectedDeliveryId = '';
   }
@@ -285,7 +296,7 @@ class _RateFormState extends ConsumerState<_RateForm> {
 
   @override
   void dispose() {
-    _rateController.dispose();
+    _amountController.dispose();
 
     super.dispose();
   }
@@ -295,6 +306,7 @@ class _RateFormState extends ConsumerState<_RateForm> {
     final colors = Theme.of(context).colorScheme;
     final rateState = ref.watch(rateProvider);
     final deliveryState = ref.watch(deliveryProvider);
+    String location = appBottomNavigationItems['balance']!.path;
 
     final currencies = rateState.currencies;
     final deliveries = deliveryState.deliveries;
@@ -319,7 +331,7 @@ class _RateFormState extends ConsumerState<_RateForm> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Icon(
-                  Icons.currency_exchange_outlined,
+                  Icons.shopify_outlined,
                   color: colors.primary,
                   size: 60
               ),
@@ -336,42 +348,73 @@ class _RateFormState extends ConsumerState<_RateForm> {
 
               CustomTextFormField(
                 label: AppFormLabels.amount,
-                controller: _rateController,
-                validator: (value) => FormValidators.validateRequired(value),
+                controller: _amountController,
+                validator: (value) => FormValidators.validateInteger(value),
                 enabled: true,
                 isRequired: true,),
 
               const SizedBox(height: 20),
 
-              FilledButton.tonalIcon(
-                  onPressed: () async {
-                    final form = _formKey.currentState;
-                    if (form == null || !form.validate()) {
-                      return;
-                    }
-                    try {
-                      final success = await _saveData();
-                      if (success && context.mounted) {
-                        _clearControllers();
-                        context.go(appBottomNavigationItems['rate']!.path);
-                      }
-                    } catch (e) {
-                      if (!context.mounted) {
-                        return;
-                      }
-                      showCustomSnackBar(
-                          context: context,
-                          message: AppRecordMessages.registerFailure,
-                          type: SnackBarType.error
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.save),
-                  label: Text(AppButtons.save)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  FilledButton.tonalIcon(
+                      onPressed: () async {
+                        final form = _formKey.currentState;
+                        if (form == null || !form.validate()) {
+                          return;
+                        }
+                        try {
+                          final success = await _saveData(1);
+                          if (success && context.mounted) {
+                            _clearControllers();
+                            context.go(location);
+                          }
+                        } catch (e) {
+                          if (!context.mounted) {
+                            return;
+                          }
+                          showCustomSnackBar(
+                              context: context,
+                              message: AppRecordMessages.registerFailure,
+                              type: SnackBarType.error
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.add),
+                      label: Text(AppButtons.inCash)
+                  ),
+                  FilledButton.tonalIcon(
+                      onPressed: () async {
+                        final form = _formKey.currentState;
+                        if (form == null || !form.validate()) {
+                          return;
+                        }
+                        try {
+                          final success = await _saveData(-1);
+                          if (success && context.mounted) {
+                            _clearControllers();
+                            context.go(location);
+                          }
+                        } catch (e) {
+                          if (!context.mounted) {
+                            return;
+                          }
+                          showCustomSnackBar(
+                              context: context,
+                              message: AppRecordMessages.registerFailure,
+                              type: SnackBarType.error
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.remove),
+                      label: Text(AppButtons.outCash)
+                  ),
+                ],
               )
             ]
         )
     );
   }
-
 }
+

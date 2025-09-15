@@ -1,88 +1,99 @@
 import 'package:flutter/material.dart';
 
-import 'package:yo_te_pago/business/config/helpers/human_formats.dart';
+import 'package:yo_te_pago/business/config/constants/app_roles.dart';
 import 'package:yo_te_pago/business/domain/entities/balance.dart';
 
 
 class BalanceTile extends StatelessWidget {
 
   final Balance balance;
+  final String? role;
 
-  const BalanceTile({super.key, required this.balance});
+  const BalanceTile({
+    super.key,
+    required this.role,
+    required this.balance
+  });
+
+  Widget? _getSubtitle(Color? color) {
+    if (role == ApiRole.manager) {
+      return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              balance.partnerName,
+              style: TextStyle(
+                  color: color,
+                  fontSize: 16.0,
+                  fontWeight: FontWeight.normal),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1),
+            Text(
+                balance.totalToString(),
+                style: TextStyle(
+                    color: color,
+                    fontSize: 16.0,
+                    fontWeight: FontWeight.bold))
+          ]
+      );
+    } else if (role == ApiRole.delivery) {
+      return Text(
+          balance.totalToString(),
+          style: TextStyle(
+              color: color,
+              fontSize: 16.0,
+              fontWeight: FontWeight.bold));
+    }
+
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final color = balance.amount < 0 ? colors.error : Colors.green.shade400;
-    final textStyle = Theme.of(context).textTheme;
+    final color = balance.total < 0 ? colors.error : Colors.green.shade400;
 
-    return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: colors.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                        balance.fullName,
-                        style: textStyle.bodySmall?.copyWith(
-                            color: color,
-                            fontWeight: FontWeight.bold)
-                    ),
-                    Text(
-                        balance.name,
-                        style: textStyle.bodySmall?.copyWith(color: color)
-                    )
-                  ]
+    return Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        elevation: 4.0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        child: Padding(
+            padding: const EdgeInsets.all(4.0),
+            child:  ListTile(
+              title: Text(
+                  balance.currency,
+                  style: TextStyle(
+                      color: color,
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1),
+              subtitle: _getSubtitle(color),
+              trailing: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                      balance.balanceToString('D'),
+                      style: TextStyle(
+                          color: color,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.bold
+                      )),
+                  const SizedBox(height: 4),
+                  Text(
+                      balance.balanceToString('C'),
+                      style: TextStyle(
+                          color: color,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.bold
+                      ))
+                ]
               ),
-
-              Row(
-                  children: [
-                    Column(
-                        children: [
-                          Row(
-                              children: [
-                                const Icon(
-                                    Icons.arrow_upward_rounded,
-                                    size: 16),
-                                Text(
-                                    ' Deb: ${HumanFormats.toAmount(balance.debit)}',
-                                    style: textStyle.bodySmall?.copyWith(color: color)
-                                )
-                              ]
-                          ),
-                          Row(
-                              children: [
-                                const Icon(
-                                    Icons.arrow_downward_rounded,
-                                    size: 16),
-                                Text(
-                                    'Cred: ${HumanFormats.toAmount(balance.credit)}',
-                                    style: textStyle.bodySmall?.copyWith(color: color)
-                                )
-                              ]
-                          )
-                        ]
-                    ),
-
-                    const SizedBox(width: 16),
-
-                    Text(
-                        HumanFormats.toAmount(balance.amount),
-                        style: textStyle.bodyMedium?.copyWith(
-                            color: color,
-                            fontWeight: FontWeight.bold)
-                    )
-                  ]
-              )
-            ]
+            )
         )
     );
+
   }
 
 }

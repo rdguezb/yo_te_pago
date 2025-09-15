@@ -216,7 +216,7 @@ class RateTile extends ConsumerWidget {
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1),
               subtitle: _getSubtitle(colors.onSurface.withAlpha(178)),
-            trailing: (role == ApiRole.manager)
+              trailing: (role == ApiRole.manager)
                 ? Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [

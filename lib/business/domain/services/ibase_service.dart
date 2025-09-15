@@ -21,6 +21,8 @@ abstract class IBaseService {
   Future<bool> deleteRemittance(Remittance remittance);
 
   Future<List<Balance>> getBalances();
+  Future<bool> addBalance(Balance balance);
+
   Future<List<BankAccount>> getBankAccounts();
 
   Future<List<User>> getDeliveries();

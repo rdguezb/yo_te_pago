@@ -6,7 +6,7 @@ import 'package:yo_te_pago/business/config/constants/app_network_states.dart';
 import 'package:yo_te_pago/business/config/constants/app_record_messages.dart';
 import 'package:yo_te_pago/business/config/constants/app_remittance_states.dart';
 import 'package:yo_te_pago/business/config/constants/app_validation.dart';
-import 'package:yo_te_pago/business/config/constants/configs.dart';
+import 'package:yo_te_pago/business/config/constants/bottom_bar_items.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/helpers/form_fields_validators.dart';
@@ -54,7 +54,7 @@ class _RemittanceViewState extends State<RemittanceView> {
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => context.go(AppConfig.rootPath),
+          onPressed: () => context.go(appBottomNavigationItems['home']!.path),
         )
       ),
       body: SafeArea(
@@ -90,6 +90,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
   bool _isLoadingRemittance = false;
   bool _isFormEditable = true;
   Remittance? _remittance;
+  String location = appBottomNavigationItems['home']!.path;
 
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _codeController = TextEditingController();
@@ -244,7 +245,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
         message: 'Error al cargar la remesa: ${e.toString()}',
         type: SnackBarType.error,
       );
-      context.go(AppConfig.rootPath);
+      context.go(location);
     }
   }
 
@@ -530,7 +531,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
                   final success = await _saveRemittance();
                   if (success && context.mounted) {
                     _clearControllers();
-                    context.go(AppConfig.rootPath);
+                    context.go(location);
                   }
                 } catch (e) {
                   if (!context.mounted) {

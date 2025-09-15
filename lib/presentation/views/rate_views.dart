@@ -112,13 +112,11 @@ class _RatesViewState extends ConsumerState<RatesView> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                              'Error al cargar monedas: ${ratesState.errorMessage}',
+                              '${ratesState.errorMessage}',
                               textAlign: TextAlign.center),
                           const SizedBox(height: 10),
                           ElevatedButton(
-                            onPressed: () {
-                              _loadData;
-                            },
+                            onPressed: () => _loadData(),
                             child: const Text(AppButtons.retry),
                           ),
                         ],
