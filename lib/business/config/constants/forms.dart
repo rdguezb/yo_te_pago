@@ -14,6 +14,8 @@ abstract class AppFormLabels {
   static const name = 'Nombre';
   static const lastName = 'Apellidos';
   static const delivery = 'Seleccione un usuario';
+  static const hintDeliverySearch = 'Buscar por remesero';
+  static const hintCustomerSearch = 'Buscar por cliente';
 
 }
 
@@ -28,7 +30,6 @@ abstract class AppButtons {
   static const confirm = 'Confirmar';
   static const inCash = 'Entrada';
   static const outCash = 'Salida';
-
 
 }
 

@@ -7,7 +7,7 @@ import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/providers/auth_notifier.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/business/providers/remittance_provider.dart';
-import 'package:yo_te_pago/presentation/widgets/dashboard/remittance_tile.dart';
+import 'package:yo_te_pago/presentation/widgets/tiles/remittance_tile.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/app_bar_widget.dart';
 
@@ -50,19 +50,6 @@ class DashboardViewState extends ConsumerState<DashboardView> {
             tooltip: 'Remesar',
             child: const Icon(Icons.add)
         );
-      }
-      else if (role == ApiRole.manager) {
-
-        return null;
-
-  //       return FloatingActionButton(
-  //           heroTag: 'recharge',
-  //           onPressed: () {
-  // //   TODO Falta hacer el metodo
-  //           },
-  //           tooltip: 'Recargar',
-  //           child: const Icon(Icons.shopify)
-  //       );
       }
 
       return null;
@@ -145,7 +132,7 @@ class DashboardViewState extends ConsumerState<DashboardView> {
                   child: TextFormField(
                       controller: _searchController,
                       decoration: InputDecoration(
-                          hintText: 'Buscar por cliente',
+                          hintText: AppFormLabels.hintCustomerSearch,
                           prefixIcon: const Icon(Icons.search),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16.0)

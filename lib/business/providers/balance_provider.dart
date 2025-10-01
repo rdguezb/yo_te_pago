@@ -65,9 +65,12 @@ class BalanceNotifier extends StateNotifier<BalanceState> {
         errorMessage: null,
       );
     } catch (e) {
+      final errorMessage = e.toString().replaceFirst('Exception: ', '');
       state = state.copyWith(
           isLoading: false,
-          errorMessage: 'Error al cargar balances'
+          errorMessage: errorMessage.isNotEmpty
+              ? errorMessage
+              : 'Error de red desconocido'
       );
     }
   }

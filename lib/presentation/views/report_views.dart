@@ -8,7 +8,7 @@ import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/providers/auth_notifier.dart';
 import 'package:yo_te_pago/business/providers/balance_provider.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
-import 'package:yo_te_pago/presentation/widgets/reports/balance_tile.dart';
+import 'package:yo_te_pago/presentation/widgets/tiles/balance_tile.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 
 
@@ -134,7 +134,7 @@ class _ReportViewState extends ConsumerState<ReportView> {
                               child: TextFormField(
                                   controller: _searchController,
                                   decoration: InputDecoration(
-                                      hintText: 'Buscar por remesero',
+                                      hintText: AppFormLabels.hintCustomerSearch,
                                       prefixIcon: const Icon(Icons.search),
                                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
                                       contentPadding: const EdgeInsets.symmetric(horizontal: 16.0)

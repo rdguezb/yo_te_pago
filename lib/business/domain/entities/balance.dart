@@ -12,8 +12,6 @@ class Balance {
   int partnerId;
   String partnerName;
 
-
-
   Balance({
     required this.currencyId,
     required this.name,
@@ -25,10 +23,6 @@ class Balance {
     required this.credit,       // este valor es el que le dan al remesero
     this.balance = 0
   });
-
-  double get total => debit - credit;
-
-  String get currency => '[$name] $fullName';
 
   factory Balance.fromJson(Map<String, dynamic> json) {
 
@@ -44,6 +38,10 @@ class Balance {
         balance: json['balance']
     );
   }
+
+  double get total => debit - credit;
+
+  String get currency => '[$name] $fullName';
 
   String totalToString() => HumanFormats.toAmount(total, symbol);
 

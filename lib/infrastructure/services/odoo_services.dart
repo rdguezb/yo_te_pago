@@ -3,17 +3,16 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 import 'package:yo_te_pago/business/config/constants/app_auth_states.dart';
-import 'package:yo_te_pago/business/config/constants/app_record_messages.dart';
-import 'package:yo_te_pago/business/config/constants/app_remittance_states.dart';
 import 'package:yo_te_pago/business/config/constants/odoo_endpoints.dart';
 import 'package:yo_te_pago/business/domain/entities/balance.dart';
 import 'package:yo_te_pago/business/domain/entities/bank_account.dart';
-import 'package:yo_te_pago/business/domain/entities/company.dart';
+import 'package:yo_te_pago/business/domain/entities/currency.dart';
 import 'package:yo_te_pago/business/domain/entities/rate.dart';
 import 'package:yo_te_pago/business/domain/entities/remittance.dart';
 import 'package:yo_te_pago/business/domain/entities/user.dart';
 import 'package:yo_te_pago/business/domain/services/ibase_service.dart';
 import 'package:yo_te_pago/infrastructure/models/dtos/bank_account_dto.dart';
+import 'package:yo_te_pago/infrastructure/models/dtos/currency_dto.dart';
 import 'package:yo_te_pago/infrastructure/models/dtos/user_dto.dart';
 import 'package:yo_te_pago/infrastructure/models/odoo_auth_result.dart';
 import 'package:yo_te_pago/infrastructure/models/dtos/balance_dto.dart';
@@ -50,20 +49,21 @@ class OdooService extends IBaseService {
       uri = Uri.parse('$baseUrl$path');
     }
 
-    if (bodyParams != null && bodyParams.containsKey('jsonrpc') && bodyParams['jsonrpc'] == '2.0' && _authResult != null && _authResult!.companyId != 0) {
+    Map<String, dynamic>? finalBodyParams = bodyParams;
+    if (finalBodyParams != null && finalBodyParams.containsKey('jsonrpc') && finalBodyParams['jsonrpc'] == '2.0' && _authResult != null && _authResult!.companyId != 0) {
       try {
-        Map<String, dynamic> params = Map<String, dynamic>.from(bodyParams['params'] ?? {});
+        Map<String, dynamic> params = Map<String, dynamic>.from(finalBodyParams['params'] ?? {});
         Map<String, dynamic> kwargs = Map<String, dynamic>.from(params['kwargs'] ?? {});
         Map<String, dynamic> context = Map<String, dynamic>.from(kwargs['context'] ?? {});
         context['company_id'] = _authResult!.companyId;
         kwargs['context'] = context;
         params['kwargs'] = kwargs;
-        bodyParams['params'] = params;
+        finalBodyParams['params'] = params;
       } catch (e) {
         throw Exception('Error interno al preparar el contexto de la compañía');
       }
     }
-    final requestBody = jsonEncode(bodyParams ?? {});
+    final requestBody = jsonEncode(finalBodyParams ?? {});
 
     final request = http.Request(method, uri)
       ..headers['Content-Type'] = 'application/json'
@@ -118,51 +118,6 @@ class OdooService extends IBaseService {
     } else {
       throw Exception('Error en la petición: Código ${response.statusCode} - Cuerpo: ${response.body}');
     }
-  }
-
-  Future<List<T>> _handleResponse<T>(dynamic apiResponse, T Function(Map<String, dynamic>) fromJson) async {
-    if (apiResponse is Map<String, dynamic>) {
-      if (apiResponse.containsKey('error')) {
-        final String? errorMessage = apiResponse['error'] as String?;
-        final int? errorCode = apiResponse['code'] as int?;
-
-        if (errorCode == 404 && errorMessage != null &&
-            errorMessage.isNotEmpty) {
-          return [];
-        } else {
-          throw Exception('Odoo Business Error (${errorCode ?? 'Desconocido'}): ${errorMessage ?? 'Error desconocido'}');
-        }
-      }
-      if (apiResponse.containsKey('result')) {
-        final dynamic resultData = apiResponse['result'];
-
-        if (resultData == null) {
-          return [];
-        }
-
-        if (resultData is List) {
-          if (resultData.isEmpty) {
-            return [];
-          }
-          return resultData
-              .map((e) => fromJson(Map<String, dynamic>.from(e as Map)))
-              .toList();
-        } else if (resultData is Map<dynamic, dynamic>) {
-          return [fromJson(Map<String, dynamic>.from(resultData))];
-        } else {
-          throw Exception('Formato de "result" inesperado: Se esperaba una lista o mapa, se recibió: ${resultData.runtimeType}');
-        }
-      }
-    }
-    if (apiResponse is List) {
-      if (apiResponse.isEmpty) {
-        return [];
-      }
-      return apiResponse
-          .map((e) => fromJson(Map<String, dynamic>.from(e as Map)))
-          .toList();
-    }
-    throw Exception('Formato de respuesta API inesperado: ${apiResponse.runtimeType}');
   }
 
   Future<bool> authenticate(String login, String password) async {
@@ -242,560 +197,274 @@ class OdooService extends IBaseService {
     }
   }
 
-  Future<List<Company>> getUserAllowedCompanies() async {
-    if (_authResult != null && _authResult!.allowedCompanies.isNotEmpty) {
-      return _authResult!.allowedCompanies;
-    }
-    if (_authResult == null || _authResult!.userId == 0) {
-      throw Exception(AppAuthMessages.errorNoAuthenticate);
-    }
-
-    try {
-      final Map<String, dynamic> body = {
-        'jsonrpc': '2.0',
-        'method': 'call',
-        'params': {
-          'model': 'res.users',
-          'method': 'read',
-          'args': [
-            [_authResult!.userId],
-            ['company_ids', 'company_id']],
-          'kwargs': {},
-        },
-        'id': DateTime.now().millisecondsSinceEpoch,
-      };
-      final dynamic result = await _sendJsonRequest(
-          'POST',
-          OdooEndpoints.callKw,
-          bodyParams: body
-      );
-
-      if (result is! List || result.isEmpty) {
-        return [];
-      }
-
-      final userData = result[0] as Map<String, dynamic>;
-      final List<dynamic> companyIds = userData['company_ids'] ?? [];
-      final dynamic currentCompanyData = userData['company_id'];
-      List<Company> fetchedCompanies = [];
-
-      if (companyIds.isNotEmpty) {
-        final Map<String, dynamic> companiesBody = {
-          'jsonrpc': '2.0',
-          'method': 'call',
-          'params': {
-            'model': 'res.company',
-            'method': 'read',
-            'args': [companyIds],
-            'kwargs': {},
-          },
-          'id': DateTime.now().millisecondsSinceEpoch,
-        };
-        final dynamic companiesDetails = await _sendJsonRequest(
-            'POST',
-            OdooEndpoints.callKw,
-            bodyParams: companiesBody
-        );
-
-        if (companiesDetails is List) {
-          for (var companyDetail in companiesDetails) {
-            if (companyDetail is Map<String, dynamic>) {
-              final Company company = Company.fromJson(companyDetail);
-              fetchedCompanies.add(company);
-            }
-          }
-        }
-      }
-      if (_authResult != null && fetchedCompanies.isNotEmpty) {
-        final int? apiCurrentCompanyId = currentCompanyData is List ? currentCompanyData[0] : (currentCompanyData as int?);
-        _authResult = _authResult!.copyWith(
-          allowedCompanies: fetchedCompanies,
-          companyId: apiCurrentCompanyId ?? _authResult!.companyId,
-        );
-      }
-
-      return fetchedCompanies;
-    } catch (e) {
-      throw Exception('Error al obtener compañías permitidas');
-    }
-  }
-
 // Remittances
 
   @override
   Future<List<Remittance>> getRemittances({int? id}) async {
-    Map<String, dynamic>? queryParams;
+    String url = OdooEndpoints.remittanceBase;
+
     if (id != null) {
-      queryParams = {'id': id.toString()};
+      url = '$url/$id';
     }
     try {
       final dynamic response = await _sendJsonRequest(
         'GET',
-        OdooEndpoints.getRemittances,
-        queryParams: queryParams);
+        url);
+      final dynamic data = response['data'];
 
-      final List<RemittanceDto> remittances = await _handleResponse<RemittanceDto>(
-          response,
-          (json) => RemittanceDto.fromJson(json));
+      List<RemittanceDto> remittancesDto;
+      if (data is Map<String, dynamic>) {
+        remittancesDto = [RemittanceDto.fromJson(data)];
+      } else if (data is List) {
+        remittancesDto = data
+            .map((jsonItem) => RemittanceDto.fromJson(jsonItem as Map<String, dynamic>))
+            .toList();
+      } else {
+        remittancesDto = [];
+      }
 
-      return remittances
+      return remittancesDto
           .map((dto) => dto.toModel())
           .toList();
     } catch (e) {
+      print('Error al obtener remesas: $e');
       throw Exception('Error al obtener remesas');
     }
   }
 
   @override
   Future<Remittance> addRemittance(Remittance remittance) async {
-    final body = {
-      'jsonrpc': '2.0',
-      'method': 'call',
-      'params': {
-        'model': 'remittance.line',
-        'method': 'create',
-        'args': [remittance.toMap()],
-        'kwargs': {},
-      },
-      'id': DateTime.now().millisecondsSinceEpoch,
-    };
+    final body = remittance.toMap();
+
     try {
       final response = await _sendJsonRequest(
           'POST',
-          OdooEndpoints.callKw,
+          OdooEndpoints.remittanceBase,
           bodyParams: body);
-      final int? id = response as int?;
 
-      if (id == null || id == 0) {
-        throw Exception('No se pudo crear la remesa.');
-      }
-      final createdRemittances = await getRemittances(id: id);
-      if (createdRemittances.isEmpty) {
-        throw Exception('No se pudo recuperar la remesa recién creada con ID: $id.');
-      }
+      final dynamic data = response['data'];
 
-      return createdRemittances.first;
+      if (data is Map<String, dynamic>) {
+        final Remittance res = Remittance.fromJson(data);
+        return res;
+      } else {
+        throw Exception('Respuesta del servidor inesperada o incompleta.');
+      }
     } catch (e) {
+      print('Error al crear remesa: $e');
       throw Exception('Error al añadir remesa');
     }
   }
 
   @override
   Future<bool> editRemittance(Remittance remittance) async {
+    final String url = '${OdooEndpoints.remittanceBase}/${remittance.id}';
     Map<String, dynamic> dataMap = remittance.toMap();
     dataMap.remove('remittance_date');
-    final body = {
-      'jsonrpc': '2.0',
-      'method': 'call',
-      'params': {
-        'model': 'remittance.line',
-        'method': 'write',
-        'args': [
-          [remittance.id],
-          dataMap
-        ],
-        'kwargs': {},
-      },
-      'id': DateTime.now().millisecondsSinceEpoch,
-    };
 
     try {
-      final response = await _sendJsonRequest(
-          'POST',
-          OdooEndpoints.callKw,
-          bodyParams: body);
-      final bool success = response as bool;
+      final dynamic response = await _sendJsonRequest(
+        'PUT',
+        url,
+        bodyParams: dataMap);
 
-      if (!success) {
-        throw Exception(AppRecordMessages.errorNoEditedRecord);
+      if (response != null && response.containsKey('message') && response['message'] == 'Remittance updated') {
+        return true;
+      } else {
+        throw Exception('Actualización exitosa pero respuesta del servidor inesperada.');
       }
 
-      return success;
     } catch (e) {
-      throw Exception('Error al editar remesa');
+      print('Error al actualizar remesa con ID ${remittance.id}: $e');
+      throw Exception('Error al actualizar la remesa. Verifique los datos, ID o permisos.');
     }
   }
 
   @override
   Future<bool> confirmRemittance(Remittance remittance) async {
-    final body = {
-      'jsonrpc': '2.0',
-      'method': 'call',
-      'params': {
-        'model': 'remittance.line',
-        'method': 'action_confirm',
-        'args': [
-          [remittance.id]
-        ],
-        'kwargs': {},
-      },
-      'id': DateTime.now().millisecondsSinceEpoch,
-    };
+    final String url = '${OdooEndpoints.remittanceBase}/confirm/${remittance.id}';
 
     try {
-      final response = await _sendJsonRequest(
-          'POST',
-          OdooEndpoints.callKw,
-          bodyParams: body);
-      final bool success = response as bool;
+      final dynamic response = await _sendJsonRequest(
+        'PUT',
+        url);
 
-      if (!success) {
-        throw Exception(AppRemittanceMessages.noConfirmRemittance);
+      if (response != null && response.containsKey('message') && response['message'] == 'Remittance confirmed') {
+        return true;
+      } else {
+        throw Exception('Confirmación exitosa pero respuesta del servidor inesperada.');
       }
-
-      return success;
     } catch (e) {
-      throw Exception('Error al cambiar a confirmada la remesa');
+      print('Error al confirmar remesa con ID ${remittance.id}: $e');
+      throw Exception('Error al confirmar la remesa. Verifique el estado o los permisos.');
     }
   }
 
   @override
   Future<bool> payRemittance(Remittance remittance) async {
-    final body = {
-      'jsonrpc': '2.0',
-      'method': 'call',
-      'params': {
-        'model': 'remittance.line',
-        'method': 'action_pay',
-        'args': [
-          [remittance.id]
-        ],
-        'kwargs': {},
-      },
-      'id': DateTime.now().millisecondsSinceEpoch,
-    };
+    final String url = '${OdooEndpoints.remittanceBase}/pay/${remittance.id}';
 
     try {
-      final response = await _sendJsonRequest(
-          'POST',
-          OdooEndpoints.callKw,
-          bodyParams: body);
-      final bool success = response as bool;
+      final dynamic response = await _sendJsonRequest(
+          'PUT',
+          url);
 
-      if (!success) {
-        throw Exception(AppRemittanceMessages.noPaidRemittance);
+      if (response != null && response.containsKey('message') && response['message'] == 'Remittance payed') {
+        return true;
+      } else {
+        throw Exception('Pago exitosa pero respuesta del servidor inesperada.');
       }
-
-      return success;
     } catch (e) {
-      throw Exception('Error al cambiar a pagada la remesa');
+      print('Error al pagar remesa con ID ${remittance.id}: $e');
+      throw Exception('Error al pagar la remesa. Verifique el estado o los permisos.');
     }
   }
 
   @override
   Future<bool> deleteRemittance(Remittance remittance) async {
-    final body = {
-      'jsonrpc': '2.0',
-      'method': 'call',
-      'params': {
-        'model': 'remittance.line',
-        'method': 'unlink',
-        'args': [
-          [remittance.id]
-        ],
-        'kwargs': {},
-      },
-      'id': DateTime.now().millisecondsSinceEpoch,
-    };
+    final String url = '${OdooEndpoints.remittanceBase}/${remittance.id}';
 
     try {
-      final response = await _sendJsonRequest(
-          'POST',
-          OdooEndpoints.callKw,
-          bodyParams: body);
-      final bool success = response as bool;
+      final dynamic response = await _sendJsonRequest(
+          'DELETE',
+          url);
 
-      if (!success) {
-        throw Exception('No se pudo eliminar la remesa con ID: ${remittance.id}.');
+      if (response != null && response.containsKey('message') && response['message'] == 'Remittance deleted') {
+        return true;
+      } else {
+        throw Exception('Eliminación exitosa pero respuesta del servidor inesperada.');
       }
-
-      return success;
     } catch (e) {
-      throw Exception('Error al eliminar remesa');
+      print('Error al eliminar remesa con ID ${remittance.id}: $e');
+      throw Exception('Error al eliminar la remesa. Verifique el estado o los permisos.');
     }
   }
 
-// Rates
+// Rates & Currencies
 
   @override
-  Future<List<Rate>> getAvailableCurrencies() async {
+  Future<List<Currency>> getAvailableCurrencies() async {
     try {
       final dynamic response = await _sendJsonRequest(
           'GET',
           OdooEndpoints.getCurrencies);
+      final dynamic data = response['data'];
+      List<CurrencyDto> currencyDto;
+      if (data is Map<String, dynamic>) {
+        currencyDto = [CurrencyDto.fromJson(data)];
+      } else if (data is List) {
+        currencyDto = data
+            .map((jsonItem) => CurrencyDto.fromJson(jsonItem as Map<String, dynamic>))
+            .toList();
+      } else {
+        currencyDto = [];
+      }
 
-      final List<RateDto> rates = await _handleResponse<RateDto>(
-          response,
-              (json) => RateDto.fromJson(json));
-
-      return rates
+      return currencyDto
           .map((dto) => dto.toModel())
           .toList();
     } catch (e) {
+      print('Error al obtener monedas: $e');
       throw Exception('Error al obtener monedas');
     }
   }
 
   @override
   Future<List<Rate>> getRates({int? id}) async {
-    Map<String, dynamic>? queryParams;
+    String url = OdooEndpoints.rateBase;
+
     if (id != null) {
-      queryParams = {'id': id.toString()};
+      url = '$url/$id';
     }
     try {
       final dynamic response = await _sendJsonRequest(
           'GET',
-          OdooEndpoints.getRates,
-          queryParams: queryParams);
+          url);
+      final dynamic data = response['data'];
 
-      final List<RateDto> rates = await _handleResponse<RateDto>(
-          response,
-              (json) => RateDto.fromJson(json));
+      List<RateDto> ratesDto;
+      if (data is Map<String, dynamic>) {
+        ratesDto = [RateDto.fromJson(data)];
+      } else if (data is List) {
+        ratesDto = data
+            .map((jsonItem) => RateDto.fromJson(jsonItem as Map<String, dynamic>))
+            .toList();
+      } else {
+        ratesDto = [];
+      }
 
-      return rates
+      return ratesDto
           .map((dto) => dto.toModel())
           .toList();
     } catch (e) {
+      print('Error al obtener tasas: $e');
       throw Exception('Error al obtener tasas');
     }
   }
 
   @override
   Future<Rate> addRate(Rate rate) async {
+    final body = rate.toMap();
 
-    final body = {
-      'jsonrpc': '2.0',
-      'method': 'call',
-      'params': {
-        'model': 'res.partner.currency.rate',
-        'method': 'create',
-        'args': [rate.toMap()],
-        'kwargs': {},
-      },
-      'id': DateTime.now().millisecondsSinceEpoch,
-    };
     try {
       final response = await _sendJsonRequest(
           'POST',
-          OdooEndpoints.callKw,
+          OdooEndpoints.rateBase,
           bodyParams: body);
-      final int? id = response as int?;
-      if (id == null || id == 0) {
-        throw Exception('No se pudo crear la tasa.');
-      }
-      final createdRate = await getRates(id: id);
-      if (createdRate.isEmpty) {
-        throw Exception('No se pudo recuperar la tasa recién creada con ID: $id.');
-      }
 
-      return createdRate.first;
+      final dynamic data = response['data'];
+
+      if (data is Map<String, dynamic>) {
+        final Rate res = Rate.fromJson(data);
+        return res;
+      } else {
+        throw Exception('Respuesta del servidor inesperada o incompleta.');
+      }
     } catch (e) {
-      throw Exception(e.toString());
+      print('Error al crear tasa: $e');
+      throw Exception('Error al añadir tasa');
     }
   }
 
   @override
   Future<bool> changeRate(Rate rate) async {
+    final String url = '${OdooEndpoints.rateBase}/${rate.id}';
     Map<String, dynamic> dataMap = rate.toMap();
-    final body = {
-      'jsonrpc': '2.0',
-      'method': 'call',
-      'params': {
-        'model': 'res.partner.currency.rate',
-        'method': 'write',
-        'args': [
-          [rate.id],
-          dataMap
-        ],
-        'kwargs': {},
-      },
-      'id': DateTime.now().millisecondsSinceEpoch,
-    };
 
     try {
-      final response = await _sendJsonRequest(
-          'POST',
-          OdooEndpoints.callKw,
-          bodyParams: body);
-      final bool success = response as bool;
+      final dynamic response = await _sendJsonRequest(
+          'PUT',
+          url,
+          bodyParams: dataMap);
 
-      if (!success) {
-        throw Exception(AppRecordMessages.errorNoEditedRecord);
+      if (response != null && response.containsKey('message') && response['message'] == 'Rate updated') {
+        return true;
+      } else {
+        throw Exception('Actualización exitosa pero respuesta del servidor inesperada.');
       }
-
-      return success;
     } catch (e) {
+      print('Error al actualizar tasa con ID ${rate.id}: $e');
       throw Exception('Error al cambiar valor de la tasa!');
     }
   }
 
   @override
   Future<bool> deleteRate(Rate rate) async {
-    final body = {
-      'jsonrpc': '2.0',
-      'method': 'call',
-      'params': {
-        'model': 'res.partner.currency.rate',
-        'method': 'unlink',
-        'args': [
-          [rate.id]
-        ],
-        'kwargs': {},
-      },
-      'id': DateTime.now().millisecondsSinceEpoch,
-    };
+    final String url = '${OdooEndpoints.rateBase}/${rate.id}';
 
     try {
-      final response = await _sendJsonRequest(
-          'POST',
-          OdooEndpoints.callKw,
-          bodyParams: body);
-      final bool success = response as bool;
+      final dynamic response = await _sendJsonRequest(
+          'DELETE',
+          url);
 
-      if (!success) {
-        throw Exception('No se pudo eliminar la tasa para: ${rate.toString()}.');
+      if (response != null && response.containsKey('message') && response['message'] == 'Rate deleted') {
+        return true;
+      } else {
+        throw Exception('Eliminación exitosa pero respuesta del servidor inesperada.');
       }
-
-      return success;
     } catch (e) {
+      print('Error al eliminar tasa con ID ${rate.id}: $e');
       throw Exception('Error al eliminar tasa');
-    }
-  }
-
-// User
-
-  @override
-  Future<List<User>> getDeliveries() async {
-    try {
-      final Map<String, dynamic> body = {
-        'jsonrpc': '2.0',
-        'method': 'call',
-        'params': {
-          'model': 'res.partner',
-          'method': 'search_read',
-          'args': [],
-          'kwargs': {
-            'domain': [
-              ['is_deliveryman', '=', true]
-            ],
-            'fields': ['id', 'name']
-          },
-        },
-        'id': DateTime.now().millisecondsSinceEpoch,
-      };
-      final dynamic response = await _sendJsonRequest(
-          'POST',
-          OdooEndpoints.callKw,
-          bodyParams: body);
-      final List<UserDto> users = await _handleResponse<UserDto>(
-          response,
-              (json) => UserDto.fromJson(json));
-
-      return users
-          .map((dto) => dto.toModel())
-          .toList();
-    } catch (e) {
-      throw Exception('Error al obtener usuarios');
-    }
-  }
-
-  @override
-  Future<bool> editUser(String login) async {
-    Map<String, dynamic> dataMap = {
-      'login': login
-    };
-    final body = {
-      'jsonrpc': '2.0',
-      'method': 'call',
-      'params': {
-        'model': 'res.users',
-        'method': 'write',
-        'args': [
-          [_authResult?.userId ?? 0],
-          dataMap
-        ],
-        'kwargs': {},
-      },
-      'id': DateTime.now().millisecondsSinceEpoch,
-    };
-
-    try {
-      final response = await _sendJsonRequest(
-          'POST',
-          OdooEndpoints.callKw,
-          bodyParams: body);
-      final bool success = response as bool;
-
-      if (!success) {
-        throw Exception(AppRecordMessages.errorNoEditedRecord);
-      }
-      if (_authResult != null) {
-        _authResult = _authResult!.copyWith(userName: login);
-      }
-
-      return success;
-    } catch (e) {
-      throw Exception('Error al editar usuario');
-    }
-  }
-
-  @override
-  Future<bool> editPartner(String name) async {
-    Map<String, dynamic> dataMap = {
-      'name': name
-    };
-    final body = {
-      'jsonrpc': '2.0',
-      'method': 'call',
-      'params': {
-        'model': 'res.partner',
-        'method': 'write',
-        'args': [
-          [_authResult?.partnerId ?? 0],
-          dataMap
-        ],
-        'kwargs': {},
-      },
-      'id': DateTime.now().millisecondsSinceEpoch,
-    };
-
-    try {
-      final response = await _sendJsonRequest(
-          'POST',
-          OdooEndpoints.callKw,
-          bodyParams: body);
-      final bool success = response as bool;
-
-      if (!success) {
-        throw Exception(AppRecordMessages.errorNoEditedRecord);
-      }
-      if (_authResult != null) {
-        _authResult = _authResult!.copyWith(partnerName: name);
-      }
-
-      return success;
-    } catch (e) {
-      throw Exception('Error al editar cliente');
-    }
-  }
-
-// Bank Accounts
-
-  @override
-  Future<List<BankAccount>> getBankAccounts() async {
-    try {
-      final dynamic response = await _sendJsonRequest(
-          'GET',
-          OdooEndpoints.getBankAccount);
-      final List<BankAccountDto> bankAccounts = await _handleResponse<BankAccountDto>(
-          response,
-              (json) => BankAccountDto.fromJson(json));
-
-      return bankAccounts
-          .map((dto) => dto.toModel())
-          .toList();
-    } catch (e) {
-      throw Exception('Error al obtener cuentas bancarias');
     }
   }
 
@@ -806,50 +475,211 @@ class OdooService extends IBaseService {
     try {
       final dynamic response = await _sendJsonRequest(
           'GET',
-          OdooEndpoints.getBalances);
-      final List<BalanceDto> balances = await _handleResponse<BalanceDto>(
-          response,
-              (json) => BalanceDto.fromJson(json));
+          OdooEndpoints.balanceBase);
 
-      return balances
+      final dynamic data = response['data'];
+
+      List<BalanceDto> balanceDto;
+      if (data is Map<String, dynamic>) {
+        balanceDto = [BalanceDto.fromJson(data)];
+      } else if (data is List) {
+        balanceDto = data
+            .map((jsonItem) => BalanceDto.fromJson(jsonItem as Map<String, dynamic>))
+            .toList();
+      } else {
+        balanceDto = [];
+      }
+
+      return balanceDto
           .map((dto) => dto.toModel())
           .toList();
     } catch (e) {
+      print('Error al obtener saldos: $e');
       throw Exception('Error al obtener saldos');
     }
   }
 
   @override
-  Future<bool> addBalance(Balance balance) async {
+  Future<bool> updateBalance(int currencyId, int partnerId, double amount, String type) async {
     final body = {
-      'jsonrpc': '2.0',
-      'method': 'call',
-      'params': {
-        'model': 'res.partner.currency.balance',
-        'method': 'update_balance',
-        'args': [{}, balance.partnerId, balance.currencyId, balance.debit, balance.credit],
-        'kwargs': {
-          'context': {}
-        },
-      },
-      'id': DateTime.now().millisecondsSinceEpoch,
+      'amount': amount,
+      'currency_id': currencyId,
+      'partner_id': partnerId,
+      'action': type
     };
 
     try {
       final response = await _sendJsonRequest(
           'POST',
-          OdooEndpoints.callKw,
+          OdooEndpoints.balanceBase,
           bodyParams: body);
-      final bool success = response != null;
 
-      if (!success) {
-        throw Exception(AppRecordMessages.registerFailure);
+      if (response != null && response.containsKey('message') && response['message'] == 'Balance updated') {
+        return true;
+      } else {
+        throw Exception('Actualización exitosa pero respuesta del servidor inesperada.');
       }
-
-      return success;
     } catch (e) {
+      print('Error al actualizar saldo: $e');
       throw Exception('Error al actualizar saldo');
     }
+  }
+
+// Bank Accounts
+
+  @override
+  Future<List<BankAccount>> getBankAccounts() async {
+    try {
+      final dynamic response = await _sendJsonRequest(
+          'GET',
+          OdooEndpoints.bankAccountBase);
+
+      final dynamic data = response['data'];
+
+      List<BankAccountDto> accountDto;
+      if (data is Map<String, dynamic>) {
+        accountDto = [BankAccountDto.fromJson(data)];
+      } else if (data is List) {
+        accountDto = data
+            .map((jsonItem) => BankAccountDto.fromJson(jsonItem as Map<String, dynamic>))
+            .toList();
+      } else {
+        accountDto = [];
+      }
+
+      if (accountDto.isEmpty) {
+        return [];
+      }
+
+      return accountDto
+          .map((dto) => dto.toModel())
+          .toList();
+    } catch (e) {
+      print('Error al obtener cuentas bancarias: $e');
+      throw Exception('Error al obtener cuentas bancarias');
+    }
+  }
+
+  @override
+  Future<bool> deleteBankAccount(BankAccount account) async {
+    final String url = '${OdooEndpoints.bankAccountBase}/${account.partnerId}';
+    final body = {
+      'bank_id': account.id,
+      'action': 'unlink'
+    };
+
+    try {
+      final response = await _sendJsonRequest(
+          'PUT',
+          url,
+          bodyParams: body);
+
+      if (response != null && response.containsKey('message') && response['message'] == 'Bank Account Deleted') {
+        return true;
+      } else {
+        throw Exception('Actualización exitosa pero respuesta del servidor inesperada.');
+      }
+    } catch (e) {
+      print('Error al desasociar cuenta bancaria: $e');
+      throw Exception('Error al desasociar cuenta bancaria');
+    }
+  }
+
+  @override
+  Future<bool> linkBankAccount(BankAccount account) async {
+    final String url = '${OdooEndpoints.bankAccountBase}/${account.partnerId}';
+    final body = {
+      'bank_id': account.id,
+      'action': 'link'
+    };
+
+    try {
+      final response = await _sendJsonRequest(
+          'PUT',
+          url,
+          bodyParams: body);
+
+      if (response != null && response.containsKey('message') && response['message'] == 'Bank Account Deleted') {
+        return true;
+      } else {
+        throw Exception('Actualización exitosa pero respuesta del servidor inesperada.');
+      }
+    } catch (e) {
+      print('Error al sasociar cuenta bancaria: $e');
+      throw Exception('Error al sasociar cuenta bancaria');
+    }
+
+  }
+
+  @override
+  Future<List<BankAccount>> getAllowedBankAccounts() async {
+    try {
+      final dynamic response = await _sendJsonRequest(
+          'GET',
+          OdooEndpoints.bankAccountAllowBase);
+
+      final dynamic data = response['data'];
+
+      List<BankAccountDto> accountDto;
+      if (data is Map<String, dynamic>) {
+        accountDto = [BankAccountDto.fromJson(data)];
+      } else if (data is List) {
+        accountDto = data
+            .map((jsonItem) => BankAccountDto.fromJson(jsonItem as Map<String, dynamic>))
+            .toList();
+      } else {
+        accountDto = [];
+      }
+
+      return accountDto
+          .map((dto) => dto.toModel())
+          .toList();
+    } catch (e) {
+      print('Error al obtener cuentas bancarias: $e');
+      throw Exception('Error al obtener cuentas bancarias');
+    }  }
+
+// User
+
+  @override
+  Future<List<User>> getDeliveries() async {
+    try {
+      final dynamic response = await _sendJsonRequest(
+          'GET',
+          OdooEndpoints.userDeliveries);
+
+      final dynamic data = response['data'];
+
+      List<UserDto> userDto;
+      if (data is Map<String, dynamic>) {
+        userDto = [UserDto.fromJson(data)];
+      } else if (data is List) {
+        userDto = data
+            .map((jsonItem) => UserDto.fromJson(jsonItem as Map<String, dynamic>))
+            .toList();
+      } else {
+        userDto = [];
+      }
+
+      return userDto
+          .map((dto) => dto.toModel())
+          .toList();
+    } catch (e) {
+      print('Error al obtener usuarios: $e');
+      throw Exception('Error al obtener usuarios');
+    }
+  }
+
+  @override
+  Future<bool> editPartner(String name) {
+    // TODO: implement editPartner
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> editUser(String login) {
+    // TODO: implement editUser
+    throw UnimplementedError();
   }
 
 }

@@ -36,11 +36,23 @@ const Map<String, BottomBarItem> appBottomNavigationItems = {
       path: '/home/2',
       allowedRoles: [ApiRole.delivery, ApiRole.manager]
   ),
+  'bank': BottomBarItem(
+      label: 'Cuentas',
+      icon: Icons.account_balance_rounded,
+      path: '/home/3',
+      allowedRoles: [ApiRole.delivery, ApiRole.manager]
+  ),
   'settings': BottomBarItem(
     label: 'Configurar',
     icon: Icons.manage_accounts_outlined,
-    path: '/home/3',
-    allowedRoles: [ApiRole.delivery, ApiRole.user, ApiRole.manager]
+    path: '/home/4',
+    allowedRoles: [ApiRole.delivery, ApiRole.user]
+  ),
+  'config': BottomBarItem(
+      label: 'Configurar',
+      icon: Icons.settings,
+      path: '/home/5',
+      allowedRoles: [ApiRole.manager]
   ),
   'logout': BottomBarItem(
     label: 'Salir',

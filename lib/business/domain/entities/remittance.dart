@@ -38,12 +38,12 @@ class Remittance {
 
     return Remittance(
         id: (json['id'] as int?) ?? 0,
-        customer: json['customer'],
+        customer: json['name'],
         code: json['code'],
         createdAt: DateTime.parse(json['date']),
         amount: json['amount']?.toDouble(),
         state: json['state'],
-        currencyId: (json['currency_id'] as int?) ?? 0,
+        currencyId: (json['payment_currency_id'] as int?) ?? 0,
         currencyName: json['currency_name'],
         currencySymbol: json['currency_symbol'],
         rate: json['rate']?.toDouble(),

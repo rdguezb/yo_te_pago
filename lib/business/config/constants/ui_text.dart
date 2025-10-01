@@ -10,5 +10,7 @@ abstract class AppTitles {
   static const error = 'Error';
   static const rateCreate = 'Crear Tasa de Cambio';
   static const balanceCreate = 'Entrada/Salida de Saldo';
+  static const bankAccount = 'Cuentas Bancarias';
+  static const bankAccountLink = 'Asociar Cuenta Bancaria';
 
 }

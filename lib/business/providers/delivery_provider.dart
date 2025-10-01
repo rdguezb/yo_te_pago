@@ -62,9 +62,12 @@ class DeliveryNotifier extends StateNotifier<DeliveryState> {
         errorMessage: null,
       );
     } catch (e) {
+      final errorMessage = e.toString().replaceFirst('Exception: ', '');
       state = state.copyWith(
           isLoading: false,
-          errorMessage: 'Error al cargar remeseros'
+          errorMessage: errorMessage.isNotEmpty
+              ? errorMessage
+              : 'Error de red desconocido'
       );
     }
   }

@@ -26,22 +26,22 @@ import 'package:yo_te_pago/presentation/widgets/input/time_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 
 
-class RemittanceView extends StatefulWidget {
+class RemittanceFormView extends StatefulWidget {
 
-  static const name = 'remittance-views';
+  static const name = 'remittance-form-views';
   final int? id;
 
-  const RemittanceView({
+  const RemittanceFormView({
     super.key,
     this.id
   });
 
   @override
-  State<RemittanceView> createState() => _RemittanceViewState();
+  State<RemittanceFormView> createState() => _RemittanceFormViewState();
 
 }
 
-class _RemittanceViewState extends State<RemittanceView> {
+class _RemittanceFormViewState extends State<RemittanceFormView> {
 
   @override
   Widget build(BuildContext context) {
@@ -78,18 +78,21 @@ class _RemittanceForm extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_RemittanceForm> createState() => _RemittanceFormState();
+  _RemittanceFormState createState() => _RemittanceFormState();
 
 }
 
 class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  String _selectedCurrencyId = '';
-  String _selectedAccountId = '';
+
   bool _isLoadingRemittance = false;
   bool _isFormEditable = true;
   Remittance? _remittance;
+
+  String _selectedCurrencyId = '';
+  String _selectedAccountId = '';
+
   String location = appBottomNavigationItems['home']!.path;
 
   final TextEditingController _amountController = TextEditingController();
@@ -103,10 +106,10 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
       return false;
     }
     final odooService = ref.read(odooServiceProvider);
-    final currenciesState = ref.read(rateProvider);
+    final rateState = ref.read(rateProvider);
     final accountState = ref.read(accountProvider);
 
-    if (currenciesState.rates.isEmpty) {
+    if (rateState.rates.isEmpty) {
       showCustomSnackBar(
         context: context,
         message: AppNetworkMessages.errorNoRates,
@@ -126,8 +129,8 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
     final amount = double.tryParse(_amountController.text) ?? 0.0;
     final code = _codeController.text.trim();
     final createDate = HumanFormats.toDateTime('${_dateController.text} ${_timeController.text}');
-    final currency = currenciesState.rates.firstWhere(
-      (c) => c.id.toString() == _selectedCurrencyId,
+    final currency = rateState.rates.firstWhere(
+      (c) => c.currencyId.toString() == _selectedCurrencyId,
       orElse: () => throw Exception(AppNetworkMessages.errorNoRates)
     );
     final bankAccount = accountState.accounts.firstWhere(
@@ -142,11 +145,11 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
       code: code,
       createdAt: createDate,
       state: _remittance != null ? _remittance!.state : 'waiting',
-      currencyId: currency.id!,
+      currencyId: currency.currencyId,
       currencyName: currency.name,
       currencySymbol: currency.symbol,
       rate: currency.rate,
-      bankAccountId: bankAccount.id,
+      bankAccountId: bankAccount.id!,
       bankAccountName: bankAccount.name,
       bankName: bankAccount.bankName
     );
@@ -259,6 +262,136 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
     _selectedAccountId = remittance.bankAccountId.toString();
   }
 
+  Widget _buildCurrencyComboBox() {
+    final ratesState = ref.watch(rateProvider);
+    final List<Rate> rates = ratesState.rates;
+    final bool isLoadingRates = ratesState.isLoading;
+    final String? rateErrorMessage = ratesState.errorMessage;
+
+    if (isLoadingRates) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (rateErrorMessage != null) {
+      return Column(
+          children: [
+            Text(
+                '$rateErrorMessage. Por favor, intente recargar.',
+                style: const TextStyle(color: Colors.red),
+                textAlign: TextAlign.center
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+                onPressed: () {
+                  ref.read(rateProvider.notifier).loadRates();
+                },
+                child: const Text(AppButtons.retry)
+            ),
+          ]
+      );
+    }
+
+    if (rates.isEmpty) {
+      return Text(
+          AppNetworkMessages.errorNoRates,
+          style: const TextStyle(color: Colors.red),
+          textAlign: TextAlign.center
+      );
+    }
+
+    return ComboBoxPicker(
+        hint: AppFormLabels.paymentCurrency,
+        label: AppFormLabels.currency,
+        isRequired: true,
+        selectedId: _selectedCurrencyId,
+        items: rates.map((rate) =>
+            DropdownMenuItem<String>(
+                value: '${rate.currencyId}',
+                child: Text(
+                    rate.toString(),
+                    overflow: TextOverflow.ellipsis)
+            )).toList(),
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return AppValidationMessages.currencySelection;
+          }
+          return null;
+        },
+        onChanged: _isFormEditable
+            ? (value) {
+                setState(() {
+                  _selectedCurrencyId = value!.trim();
+                });
+              }
+            : null
+    );
+  }
+
+  Widget _buildAccountComboBox() {
+    final accountState = ref.watch(accountProvider);
+    final List<BankAccount> accounts = accountState.accounts;
+    final bool isLoadingAccounts = accountState.isLoading;
+    final String? accountErrorMessage = accountState.errorMessage;
+
+    if (isLoadingAccounts) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (accountErrorMessage != null) {
+      return Column(
+          children: [
+            Text(
+                '$accountErrorMessage. Por favor, intente recargar.',
+                style: const TextStyle(color: Colors.red),
+                textAlign: TextAlign.center
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+                onPressed: () {
+                  ref.read(accountProvider.notifier).loadAccounts();
+                },
+                child: const Text(AppButtons.retry)
+            ),
+          ]
+      );
+    }
+
+    if (accounts.isEmpty) {
+      return Text(
+          AppNetworkMessages.errorNoBankAccount,
+          style: const TextStyle(color: Colors.red),
+          textAlign: TextAlign.center
+      );
+    }
+
+    return ComboBoxPicker(
+        hint: AppFormLabels.bankAccount,
+        label: AppFormLabels.accountBank,
+        isRequired: true,
+        selectedId: _selectedAccountId,
+        items: accounts.map((account) => DropdownMenuItem<String>(
+            value: '${account.id}',
+            child: Text(
+                account.toString(),
+                overflow: TextOverflow.ellipsis
+            )
+        )).toList(),
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return AppValidationMessages.accountSelection;
+          }
+          return null;
+        },
+        onChanged: _isFormEditable
+            ? (value) {
+                setState(() {
+                  _selectedAccountId = value!.trim();
+                });
+              }
+            : null
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -290,21 +423,11 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final ratesState = ref.watch(rateProvider);
-    final List<Rate> rates = ratesState.rates;
-    final bool isLoadingRates = ratesState.isLoading;
-    final String? rateErrorMessage = ratesState.errorMessage;
-    final accountState = ref.watch(accountProvider);
-    final List<BankAccount> accounts = accountState.accounts;
-    final bool isLoadingAccounts = accountState.isLoading;
-    final String? accountErrorMessage = accountState.errorMessage;
-    Widget currencyComboBox;
-    Widget accountComboBox;
 
     ref.listen<RateState>(rateProvider, (previousState, newState) {
       if (!newState.isLoading && newState.rates.isNotEmpty && _isFormEditable && _selectedCurrencyId.isEmpty && widget.id == null) {
         setState(() {
-          _selectedCurrencyId = newState.rates.first.id.toString();
+          _selectedCurrencyId = newState.rates.first.currencyId.toString();
         });
       }
     });
@@ -326,113 +449,6 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
           style: TextStyle(color: colors.error),
           textAlign: TextAlign.center,
         ),
-      );
-    }
-
-    if (isLoadingRates) {
-      currencyComboBox = const Center(child: CircularProgressIndicator());
-    } else if (rateErrorMessage != null) {
-      currencyComboBox = Column(
-          children: [
-            Text(
-                'Error al cargar tasas: $rateErrorMessage. Por favor, intente recargar.',
-                style: const TextStyle(color: Colors.red),
-                textAlign: TextAlign.center
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-                onPressed: () {
-                  ref.read(rateProvider.notifier).loadRates();
-                },
-                child: const Text(AppButtons.retry)
-            ),
-          ]
-      );
-    } else if (rates.isEmpty) {
-      currencyComboBox = Text(
-          AppNetworkMessages.errorNoRates,
-          style: const TextStyle(color: Colors.red),
-          textAlign: TextAlign.center
-      );
-    } else {
-      currencyComboBox = ComboBoxPicker(
-          hint: AppFormLabels.paymentCurrency,
-          label: AppFormLabels.currency,
-          isRequired: true,
-          selectedId: _selectedCurrencyId,
-          items: rates.map((rate) =>
-              DropdownMenuItem<String>(
-                value: '${rate.id}',
-                child: Text(
-                  rate.toString(),
-                  overflow: TextOverflow.ellipsis)
-              )).toList(),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return AppValidationMessages.currencySelection;
-            }
-            return null;
-          },
-          onChanged: _isFormEditable
-              ? (value) {
-            setState(() {
-              _selectedCurrencyId = value!.trim();
-            });
-          }
-              : null
-      );
-    }
-    if (isLoadingAccounts) {
-      accountComboBox = const Center(child: CircularProgressIndicator());
-    } else if (accountErrorMessage != null) {
-      accountComboBox = Column(
-          children: [
-            Text(
-                'Error al cargar cuentas bancarias: $accountErrorMessage. Por favor, intente recargar.',
-                style: const TextStyle(color: Colors.red),
-                textAlign: TextAlign.center
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-                onPressed: () {
-                  ref.read(accountProvider.notifier).loadAccounts();
-                },
-                child: const Text(AppButtons.retry)
-            ),
-          ]
-      );
-    } else if (accounts.isEmpty) {
-      accountComboBox = Text(
-          AppNetworkMessages.errorNoBankAccount,
-          style: const TextStyle(color: Colors.red),
-          textAlign: TextAlign.center
-      );
-    } else {
-      accountComboBox = ComboBoxPicker(
-          hint: AppFormLabels.bankAccount,
-          label: AppFormLabels.accountBank,
-          isRequired: true,
-          selectedId: _selectedAccountId,
-          items: accounts.map((account) => DropdownMenuItem<String>(
-            value: '${account.id}',
-            child: Text(
-              account.toString(),
-              overflow: TextOverflow.ellipsis
-            )
-          )).toList(),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return AppValidationMessages.accountSelection;
-            }
-            return null;
-          },
-          onChanged: _isFormEditable
-              ? (value) {
-            setState(() {
-              _selectedAccountId = value!.trim();
-            });
-          }
-              : null
       );
     }
 
@@ -512,11 +528,11 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
 
           const SizedBox(height: 20),
 
-          accountComboBox,
+          _buildAccountComboBox(),
 
           const SizedBox(height: 20),
 
-          currencyComboBox,
+          _buildCurrencyComboBox(),
 
           const SizedBox(height: 20),
 

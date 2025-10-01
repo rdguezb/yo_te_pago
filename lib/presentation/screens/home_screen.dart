@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:yo_te_pago/presentation/views/bank_views.dart';
 
 import 'package:yo_te_pago/presentation/views/dashboard_views.dart';
 import 'package:yo_te_pago/presentation/views/rate_views.dart';
@@ -29,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
     DashboardView(),
     ReportView(),
     RatesView(),
+    BankViews(),
     SettingsView(),
   ];
 

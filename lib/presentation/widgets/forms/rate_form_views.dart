@@ -4,15 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import 'package:yo_te_pago/business/config/constants/app_network_states.dart';
 import 'package:yo_te_pago/business/config/constants/app_record_messages.dart';
-import 'package:yo_te_pago/business/config/constants/app_remittance_states.dart';
 import 'package:yo_te_pago/business/config/constants/app_validation.dart';
 import 'package:yo_te_pago/business/config/constants/bottom_bar_items.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/helpers/form_fields_validators.dart';
+import 'package:yo_te_pago/business/domain/entities/rate.dart';
+import 'package:yo_te_pago/business/providers/currency_provider.dart';
 import 'package:yo_te_pago/business/providers/delivery_provider.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
-import 'package:yo_te_pago/business/providers/rate_provider.dart';
 import 'package:yo_te_pago/presentation/widgets/input/custom_text_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/input/dropdown_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
@@ -30,7 +30,6 @@ class RateFormView extends StatefulWidget {
   State<RateFormView> createState() => _RateFormViewState();
 
 }
-
 
 class _RateFormViewState extends State<RateFormView> {
 
@@ -59,16 +58,14 @@ class _RateFormViewState extends State<RateFormView> {
 
 }
 
-
 class _RateForm extends ConsumerStatefulWidget {
 
   const _RateForm();
 
   @override
-  ConsumerState<_RateForm> createState() => _RateFormState();
+  _RateFormState createState() => _RateFormState();
 
 }
-
 
 class _RateFormState extends ConsumerState<_RateForm> {
 
@@ -82,9 +79,9 @@ class _RateFormState extends ConsumerState<_RateForm> {
     if (!mounted) {
       return false;
     }
-    final rateState = ref.read(rateProvider);
     final deliveryState = ref.read(deliveryProvider);
-    final currencies = rateState.currencies;
+    final currencyState = ref.read(currencyProvider);
+    final currencies = currencyState.currencies;
     final deliveries = deliveryState.deliveries;
     final odooService = ref.read(odooServiceProvider);
 
@@ -114,17 +111,20 @@ class _RateFormState extends ConsumerState<_RateForm> {
       return false;
     }
     final currency = currencies.firstWhere(
-            (c) => c.currencyId.toString() == _selectedCurrencyId,
+            (c) => c.id.toString() == _selectedCurrencyId,
         orElse: () => throw Exception(AppNetworkMessages.errorNoCurrencies)
     );
     final delivery = deliveries.firstWhere(
             (c) => c.id.toString() == _selectedDeliveryId,
         orElse: () => throw Exception(AppNetworkMessages.errorNoBankAccount)
     );
-    final rateToSave = currency.copyWith(
-      rate: amount,
-      partnerId: delivery.id
-    );
+    final rateToSave = Rate(
+        currencyId: currency.id!,
+        name: currency.name,
+        fullName: currency.fullName,
+        symbol: currency.symbol,
+        rate: amount,
+        partnerId: delivery.id!);
 
     try {
       if (rateToSave.id == null) {
@@ -160,23 +160,23 @@ class _RateFormState extends ConsumerState<_RateForm> {
   }
 
   Widget _buildCurrencyDropdown() {
-    final rateState = ref.watch(rateProvider);
-    final currencies = rateState.currencies;
+    final currencyState = ref.watch(currencyProvider);
+    final currencies = currencyState.currencies;
 
-    if (rateState.isLoading) {
+    if (currencyState.isLoading) {
       return const Center(child: CircularProgressIndicator());
-    } else if (rateState.errorMessage != null) {
+    } else if (currencyState.errorMessage != null && currencies.isEmpty) {
       return Column(
           children: [
             Text(
-                'Error al cargar monedas: ${rateState.errorMessage}. Por favor, intente recargar.',
+                '${currencyState.errorMessage}. Por favor, intente recargar.',
                 style: const TextStyle(color: Colors.red),
                 textAlign: TextAlign.center
             ),
             const SizedBox(height: 10),
             ElevatedButton(
                 onPressed: () {
-                  ref.read(rateProvider.notifier).loadCurrencies();
+                  ref.read(currencyProvider.notifier).loadCurrencies();
                 },
                 child: const Text(AppButtons.retry)
             ),
@@ -196,7 +196,7 @@ class _RateFormState extends ConsumerState<_RateForm> {
           selectedId: _selectedCurrencyId,
           items: currencies.map((currency) =>
               DropdownMenuItem<String>(
-                  value: '${currency.currencyId}',
+                  value: '${currency.id}',
                   child: Text(
                       currency.toString(),
                       overflow: TextOverflow.ellipsis)
@@ -226,7 +226,7 @@ class _RateFormState extends ConsumerState<_RateForm> {
       return Column(
           children: [
             Text(
-                'Error al cargar remeseros: ${deliveryState.errorMessage}. Por favor, intente recargar.',
+                '${deliveryState.errorMessage}. Por favor, intente recargar.',
                 style: const TextStyle(color: Colors.red),
                 textAlign: TextAlign.center
             ),
@@ -278,7 +278,7 @@ class _RateFormState extends ConsumerState<_RateForm> {
     super.initState();
 
     Future.microtask(() {
-      ref.read(rateProvider.notifier).loadCurrencies();
+      ref.read(currencyProvider.notifier).loadCurrencies();
       ref.read(deliveryProvider.notifier).loadDeliveries();
     });
   }
@@ -293,23 +293,11 @@ class _RateFormState extends ConsumerState<_RateForm> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final rateState = ref.watch(rateProvider);
+    final currencyState = ref.watch(currencyProvider);
     final deliveryState = ref.watch(deliveryProvider);
 
-    final currencies = rateState.currencies;
-    final deliveries = deliveryState.deliveries;
-
-    if (rateState.isLoading || deliveryState.isLoading) {
+    if (currencyState.isLoading || deliveryState.isLoading) {
       return const Center(child: CircularProgressIndicator());
-    }
-    if (currencies.isEmpty || deliveries.isEmpty) {
-      return Center(
-        child: Text(
-          AppRemittanceMessages.noData,
-          style: TextStyle(color: colors.error),
-          textAlign: TextAlign.center,
-        ),
-      );
     }
 
     return Form(

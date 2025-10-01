@@ -2,12 +2,17 @@ abstract class OdooEndpoints {
 
   static const String authenticate = '/web/session/authenticate';
   static const String logout = '/web/session/logout';
-  static const String callKw = '/web/dataset/call_kw';
 
-  static const String getBalances = '/api/v1/balance/total';
-  static const String getRates = '/api/v1/rates/get';
-  static const String getCurrencies = '/api/v1/currency/get';
-  static const String getRemittances = '/api/v1/remittance/get';
-  static const String getBankAccount = '/api/v1/accounts/get';
+  static const String remittanceBase = '/api/remittance';
+  static const String rateBase = '/api/rate';
+  static const String getCurrencies = '/api/currencies';
+  static const String balanceBase = '/api/balance';
+  static const String bankAccountBase = '/api/account';
+  static const String userDeliveries = '/api/delivery';
+  static const String bankAccountAllowBase = '/api/bank_account';
+
+  // static const String getBalances = '/api/v1/balance/total';
+  // static const String getRates = '/api/v1/rates/get';
+  // static const String getBankAccount = '/api/v1/accounts/get';
 
 }

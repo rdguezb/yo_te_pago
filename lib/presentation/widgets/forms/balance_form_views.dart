@@ -4,16 +4,14 @@ import 'package:go_router/go_router.dart';
 
 import 'package:yo_te_pago/business/config/constants/app_network_states.dart';
 import 'package:yo_te_pago/business/config/constants/app_record_messages.dart';
-import 'package:yo_te_pago/business/config/constants/app_remittance_states.dart';
 import 'package:yo_te_pago/business/config/constants/app_validation.dart';
 import 'package:yo_te_pago/business/config/constants/bottom_bar_items.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/helpers/form_fields_validators.dart';
-import 'package:yo_te_pago/business/domain/entities/balance.dart';
+import 'package:yo_te_pago/business/providers/currency_provider.dart';
 import 'package:yo_te_pago/business/providers/delivery_provider.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
-import 'package:yo_te_pago/business/providers/rate_provider.dart';
 import 'package:yo_te_pago/presentation/widgets/input/custom_text_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/input/dropdown_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
@@ -63,7 +61,7 @@ class _BalanceForm extends ConsumerStatefulWidget {
   const _BalanceForm();
 
   @override
-  ConsumerState<_BalanceForm> createState() => _BalanceFormState();
+  _BalanceFormState createState() => _BalanceFormState();
 
 }
 
@@ -75,31 +73,24 @@ class _BalanceFormState extends ConsumerState<_BalanceForm> {
 
   final TextEditingController _amountController = TextEditingController();
 
-  Future<bool> _saveData(int sign) async {
+  Future<bool> _saveData(String action) async {
     if (!mounted) {
       return false;
     }
-    final rateState = ref.read(rateProvider);
     final deliveryState = ref.read(deliveryProvider);
-    final currencies = rateState.currencies;
+    final currencyState = ref.read(currencyProvider);
+    final currencies = currencyState.currencies;
     final deliveries = deliveryState.deliveries;
     final odooService = ref.read(odooServiceProvider);
-    double credit = 0;
-    double debit = 0;
 
     final amount = double.tryParse(_amountController.text) ?? 0.0;
-    if (amount == 0) {
+    if (amount <= 0) {
       showCustomSnackBar(
         context: context,
         message: AppValidationMessages.positiveNumber,
         type: SnackBarType.error,
       );
       return false;
-    }
-    if (sign > 0) {
-      credit = amount;
-    } else {
-      debit = amount;
     }
 
     if (currencies.isEmpty) {
@@ -119,28 +110,20 @@ class _BalanceFormState extends ConsumerState<_BalanceForm> {
       return false;
     }
     final currency = currencies.firstWhere(
-            (c) => c.currencyId.toString() == _selectedCurrencyId,
+            (c) => c.id.toString() == _selectedCurrencyId,
         orElse: () => throw Exception(AppNetworkMessages.errorNoCurrencies)
     );
     final delivery = deliveries.firstWhere(
             (c) => c.id.toString() == _selectedDeliveryId,
         orElse: () => throw Exception(AppNetworkMessages.errorNoDeliveries)
     );
-    if (sign > 0) {
-
-    }
-    final balance = Balance(
-        currencyId: currency.currencyId,
-        name: currency.name,
-        fullName: currency.fullName,
-        symbol: currency.symbol,
-        partnerId: delivery.id!,
-        partnerName: delivery.name,
-        debit: debit,
-        credit: credit);
 
     try {
-      await odooService.addBalance(balance);
+      await odooService.updateBalance(
+          currency.id!,
+          delivery.id!,
+          amount,
+          action);
       if (!mounted) {
         return false;
       }
@@ -171,23 +154,23 @@ class _BalanceFormState extends ConsumerState<_BalanceForm> {
   }
 
   Widget _buildCurrencyDropdown() {
-    final rateState = ref.watch(rateProvider);
-    final currencies = rateState.currencies;
+    final currencyState = ref.watch(currencyProvider);
+    final currencies = currencyState.currencies;
 
-    if (rateState.isLoading) {
+    if (currencyState.isLoading) {
       return const Center(child: CircularProgressIndicator());
-    } else if (rateState.errorMessage != null) {
+    } else if (currencyState.errorMessage != null && currencies.isEmpty) {
       return Column(
           children: [
             Text(
-                'Error al cargar monedas: ${rateState.errorMessage}. Por favor, intente recargar.',
+                '${currencyState.errorMessage}. Por favor, intente recargar.',
                 style: const TextStyle(color: Colors.red),
                 textAlign: TextAlign.center
             ),
             const SizedBox(height: 10),
             ElevatedButton(
                 onPressed: () {
-                  ref.read(rateProvider.notifier).loadCurrencies();
+                  ref.read(currencyProvider.notifier).loadCurrencies();
                 },
                 child: const Text(AppButtons.retry)
             ),
@@ -207,7 +190,7 @@ class _BalanceFormState extends ConsumerState<_BalanceForm> {
           selectedId: _selectedCurrencyId,
           items: currencies.map((currency) =>
               DropdownMenuItem<String>(
-                  value: '${currency.currencyId}',
+                  value: '${currency.id}',
                   child: Text(
                       currency.toString(),
                       overflow: TextOverflow.ellipsis)
@@ -237,7 +220,7 @@ class _BalanceFormState extends ConsumerState<_BalanceForm> {
       return Column(
           children: [
             Text(
-                'Error al cargar remeseros: ${deliveryState.errorMessage}. Por favor, intente recargar.',
+                '${deliveryState.errorMessage}. Por favor, intente recargar.',
                 style: const TextStyle(color: Colors.red),
                 textAlign: TextAlign.center
             ),
@@ -289,7 +272,7 @@ class _BalanceFormState extends ConsumerState<_BalanceForm> {
     super.initState();
 
     Future.microtask(() {
-      ref.read(rateProvider.notifier).loadCurrencies();
+      ref.read(currencyProvider.notifier).loadCurrencies();
       ref.read(deliveryProvider.notifier).loadDeliveries();
     });
   }
@@ -304,24 +287,12 @@ class _BalanceFormState extends ConsumerState<_BalanceForm> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final rateState = ref.watch(rateProvider);
+    final currencyState = ref.watch(currencyProvider);
     final deliveryState = ref.watch(deliveryProvider);
     String location = appBottomNavigationItems['balance']!.path;
 
-    final currencies = rateState.currencies;
-    final deliveries = deliveryState.deliveries;
-
-    if (rateState.isLoading || deliveryState.isLoading) {
+    if (currencyState.isLoading || deliveryState.isLoading) {
       return const Center(child: CircularProgressIndicator());
-    }
-    if (currencies.isEmpty || deliveries.isEmpty) {
-      return Center(
-        child: Text(
-          AppRemittanceMessages.noData,
-          style: TextStyle(color: colors.error),
-          textAlign: TextAlign.center,
-        ),
-      );
     }
 
     return Form(
@@ -365,7 +336,7 @@ class _BalanceFormState extends ConsumerState<_BalanceForm> {
                           return;
                         }
                         try {
-                          final success = await _saveData(1);
+                          final success = await _saveData('credit');
                           if (success && context.mounted) {
                             _clearControllers();
                             context.go(location);
@@ -391,7 +362,7 @@ class _BalanceFormState extends ConsumerState<_BalanceForm> {
                           return;
                         }
                         try {
-                          final success = await _saveData(-1);
+                          final success = await _saveData('debit');
                           if (success && context.mounted) {
                             _clearControllers();
                             context.go(location);

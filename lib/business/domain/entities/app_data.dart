@@ -18,6 +18,7 @@ class AppData {
     String? valueStr,
     String? valueType
   }) {
+
     return AppData(
         id: id ?? this.id,
         keyName: keyName ?? this.keyName,

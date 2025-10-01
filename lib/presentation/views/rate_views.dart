@@ -8,7 +8,7 @@ import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/providers/auth_notifier.dart';
 import 'package:yo_te_pago/business/providers/rate_provider.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
-import 'package:yo_te_pago/presentation/widgets/rates/rate_tile.dart';
+import 'package:yo_te_pago/presentation/widgets/tiles/rate_tile.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 
 
@@ -105,7 +105,27 @@ class _RatesViewState extends ConsumerState<RatesView> {
                     padding: EdgeInsets.symmetric(vertical: 16.0)
                 ),
 
-                if (ratesState.errorMessage != null)
+                if (userRole != ApiRole.delivery)
+                  SliverToBoxAdapter(
+                      child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                          child: TextFormField(
+                              controller: _searchController,
+                              decoration: InputDecoration(
+                                  hintText: AppFormLabels.hintDeliverySearch,
+                                  prefixIcon: const Icon(Icons.search),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16.0)
+                              )
+                          )
+                      )
+                  ),
+
+                const SliverPadding(
+                    padding: EdgeInsets.symmetric(vertical: 16.0)
+                ),
+
+                if (ratesState.errorMessage != null && filteredRates.isEmpty)
                   SliverToBoxAdapter(
                     child: Center(
                       child: Column(
@@ -117,51 +137,35 @@ class _RatesViewState extends ConsumerState<RatesView> {
                           const SizedBox(height: 10),
                           ElevatedButton(
                             onPressed: () => _loadData(),
-                            child: const Text(AppButtons.retry),
-                          ),
-                        ],
-                      ),
+                            child: const Text(AppButtons.retry)
+                          )
+                        ]
+                      )
                     )
                   )
                 else
-                  if (userRole != ApiRole.delivery)
-                    SliverToBoxAdapter(
-                        child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                            child: TextFormField(
-                                controller: _searchController,
-                                decoration: InputDecoration(
-                                    hintText: 'Buscar por remesero',
-                                    prefixIcon: const Icon(Icons.search),
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16.0)
-                                )
-                            )
-                        )
-                    ),
                   if (filteredRates.isEmpty)
                     SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: Center(
-                        child: Text(
-                          'No se encontraron tasas!',
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.red)
+                        hasScrollBody: false,
+                        child: Center(
+                            child: Text(
+                                'No se encontraron tasas!',
+                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.red)
+                            )
                         )
-                      )
                     )
                   else
                     SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                            (BuildContext context, int index) {
-                          final currency = filteredRates[index];
+                        delegate: SliverChildBuilderDelegate(
+                                (BuildContext context, int index) {
+                              final rate = filteredRates[index];
 
-                          return RateTile(
-                              role: userRole,
-                              rate: currency
-                          );
-                        },
-                        childCount: filteredRates.length
-                      )
+                              return RateTile(
+                                  role: userRole,
+                                  rate: rate);
+                            },
+                            childCount: filteredRates.length
+                        )
                     )
               ]
             )
@@ -171,6 +175,3 @@ class _RatesViewState extends ConsumerState<RatesView> {
   }
 
 }
-
-
-

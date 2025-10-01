@@ -15,26 +15,27 @@ class RemittanceDto extends Remittance {
     required super.rate,
     required super.bankAccountId,
     required super.bankAccountName,
-    required super.bankName,
+    super.bankName,
     super.code
   });
 
   factory RemittanceDto.fromJson(Map<String, dynamic> json) {
 
+
     return RemittanceDto(
         id: (json['id'] as int?) ?? 0,
-        customer: json['customer'],
-        code: json['code'],
+        customer: (json['name'] as String?) ?? '',
+        code: (json['code'] as String?) ?? '',
         createdAt: DateTime.parse(json['date']),
-        amount: json['amount']?.toDouble(),
-        state: json['state'],
-        currencyId: (json['currency_id'] as int?) ?? 0,
-        currencyName: json['currency_name'],
-        currencySymbol: json['currency_symbol'],
-        rate: json['rate']?.toDouble(),
+        amount: (json['amount']?.toDouble()) ?? 0.0,
+        state: (json['state'] as String?) ?? 'waiting',
+        currencyId: (json['payment_currency_id'] as int?) ?? 0,
+        currencyName: (json['currency_name'] as String?) ?? 'N/A',
+        currencySymbol: (json['currency_symbol'] as String?) ?? '',
+        rate: (json['rate']?.toDouble()) ?? 0.0,
         bankAccountId: (json['bank_id'] as int?) ?? 0,
-        bankAccountName: json['acc_number'],
-        bankName: json['bank_name']
+        bankAccountName: (json['acc_number'] as String?) ?? 'N/A',
+        bankName: json['bank_name'] as String?
     );
   }
 

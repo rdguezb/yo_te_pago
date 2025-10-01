@@ -19,5 +19,7 @@ abstract class AppRemittanceMessages {
   static const rateDeletedError = 'No se pudo eliminar la tasa !';
   static const noDelivery = 'No se encontraron remeseros !';
   static const noData = 'No se encontraron monedas disponibles ni remeseros !';
+  static const accountDeletedSuccess = 'Cuenta bancaria eliminada exitosamente';
+  static const accountDeletedError = 'No se pudo eliminar la cuenta bancaria !';
 
 }

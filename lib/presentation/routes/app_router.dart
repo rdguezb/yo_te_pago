@@ -6,9 +6,10 @@ import 'package:yo_te_pago/business/providers/auth_notifier.dart';
 import 'package:yo_te_pago/presentation/screens/home_screen.dart';
 import 'package:yo_te_pago/presentation/screens/loading_screen.dart';
 import 'package:yo_te_pago/presentation/screens/register_screen.dart';
-import 'package:yo_te_pago/presentation/views/balance_form_views.dart';
-import 'package:yo_te_pago/presentation/views/rate_form_views.dart';
-import 'package:yo_te_pago/presentation/views/remittance_views.dart';
+import 'package:yo_te_pago/presentation/widgets/forms/balance_form_views.dart';
+import 'package:yo_te_pago/presentation/widgets/forms/bank_account_form_views.dart';
+import 'package:yo_te_pago/presentation/widgets/forms/rate_form_views.dart';
+import 'package:yo_te_pago/presentation/widgets/forms/remittance_form_views.dart';
 
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -21,6 +22,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   const String pathRemittanceCreate = '/remittance/create';
   const String pathRateCreate = '/rate/create';
   const String pathBalanceAdd = '/balance/create';
+  const String pathBankAccountLink = '/account/link';
 
   String getHomePath(int pageIndex) => '/home/$pageIndex';
 
@@ -53,17 +55,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: pathRemittance,
-        name: RemittanceView.name,
+        name: RemittanceFormView.name,
         builder: (context, state) {
           final id = int.tryParse(state.pathParameters['id'] ?? '0');
 
-          return RemittanceView(id: id);
+          return RemittanceFormView(id: id);
         },
       ),
       GoRoute(
         path: pathRemittanceCreate,
         name: 'create-remittance',
-        builder: (context, state) => const RemittanceView(),
+        builder: (context, state) => const RemittanceFormView(),
       ),
       GoRoute(
         path: pathRateCreate,
@@ -74,6 +76,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: pathBalanceAdd,
         name: BalanceFormView.name,
         builder: (context, state) => const BalanceFormView(),
+      ),
+      GoRoute(
+        path: pathBankAccountLink,
+        name: BankAccountFormView.name,
+        builder: (context, state) => const BankAccountFormView(),
       )
     ],
 

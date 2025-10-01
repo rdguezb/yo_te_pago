@@ -8,22 +8,26 @@ import 'package:yo_te_pago/infrastructure/services/odoo_services.dart';
 
 class BankAccountState {
   final List<BankAccount> accounts;
+  final List<BankAccount> allowedAccounts;
   final bool isLoading;
   final String? errorMessage;
 
   BankAccountState({
     this.accounts = const [],
+    this.allowedAccounts = const [],
     this.isLoading = false,
     this.errorMessage,
   });
 
   BankAccountState copyWith({
     List<BankAccount>? accounts,
+    List<BankAccount>? allowedAccounts,
     bool? isLoading,
     String? errorMessage,
   }) {
     return BankAccountState(
       accounts: accounts ?? this.accounts,
+      allowedAccounts: allowedAccounts ?? this.allowedAccounts,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage ?? this.errorMessage,
     );
@@ -48,6 +52,49 @@ class BankAccountNotifier extends StateNotifier<BankAccountState> {
     if (odooService == null || !odooSessionState.isAuthenticated) {
       state = state.copyWith(
         isLoading: false,
+        errorMessage: AppNetworkMessages.errorNoConection);
+
+      return;
+    }
+    state = state.copyWith(
+        isLoading: true,
+        errorMessage: null,
+        accounts: [],
+        allowedAccounts: []
+    );
+
+    try {
+      final List<BankAccount> accounts = await odooService.getBankAccounts();
+
+      state = state.copyWith(
+        accounts: accounts,
+        allowedAccounts: [],
+        isLoading: false,
+        errorMessage: null);
+    } catch (e) {
+      final errorMessage = e.toString().replaceFirst('Exception: ', '');
+      state = state.copyWith(
+          accounts: [],
+          allowedAccounts: [],
+          isLoading: false,
+          errorMessage: errorMessage.isNotEmpty
+              ? errorMessage
+              : 'Error de red desconocido'
+      );
+    }
+  }
+
+  Future<void> loadAllowedAccounts() async {
+    if (state.isLoading) {
+      return;
+    }
+
+    final OdooService? odooService = _ref.read(odooServiceProvider);
+    final odooSessionState = _ref.read(odooSessionNotifierProvider);
+
+    if (odooService == null || !odooSessionState.isAuthenticated) {
+      state = state.copyWith(
+        isLoading: false,
         errorMessage: AppNetworkMessages.errorNoConection,
       );
       return;
@@ -57,22 +104,41 @@ class BankAccountNotifier extends StateNotifier<BankAccountState> {
         errorMessage: null);
 
     try {
-      final List<BankAccount> accounts = await odooService.getBankAccounts();
+      final List<BankAccount> accounts = await odooService.getAllowedBankAccounts();
       state = state.copyWith(
-        accounts: accounts,
-        isLoading: false,
-        errorMessage: null,
-      );
-    } catch (e) {
-      state = state.copyWith(
+          accounts: [],
+          allowedAccounts: accounts,
           isLoading: false,
-          errorMessage: 'Error al cargar cuentas de banco'
+          errorMessage: null);
+    } catch (e) {
+      final errorMessage = e.toString().replaceFirst('Exception: ', '');
+      state = state.copyWith(
+          accounts: [],
+          allowedAccounts: [],
+          isLoading: false,
+          errorMessage: errorMessage.isNotEmpty
+              ? errorMessage
+              : 'Error de red desconocido'
       );
     }
   }
 
   Future<void> refreshAccounts() async {
+    state = state.copyWith(
+        accounts: [],
+        allowedAccounts: [],
+        isLoading: true,
+        errorMessage: null);
     await loadAccounts();
+  }
+
+  Future<void> refreshAllowedAccounts() async {
+    state = state.copyWith(
+        accounts: [],
+        allowedAccounts: [],
+        isLoading: true,
+        errorMessage: null);
+    await loadAllowedAccounts();
   }
 
 }
@@ -82,4 +148,3 @@ final accountProvider = StateNotifierProvider<BankAccountNotifier, BankAccountSt
 
   return BankAccountNotifier(ref);
 });
-
