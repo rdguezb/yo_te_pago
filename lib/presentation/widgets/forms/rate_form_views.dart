@@ -56,15 +56,6 @@ class _RateFormViewState extends ConsumerState<RateFormView> {
     super.dispose();
   }
 
-  void _clearForm() {
-    _formKey.currentState?.reset();
-    _rateController.clear();
-    setState(() {
-      _selectedCurrencyId = null;
-      _selectedDeliveryId = null;
-    });
-  }
-
   Future<void> _saveRate() async {
     if (!(_formKey.currentState?.validate() ?? false)) {
       showCustomSnackBar(
@@ -110,7 +101,6 @@ class _RateFormViewState extends ConsumerState<RateFormView> {
         type: SnackBarType.success,
       );
 
-      _clearForm();
       context.go(goBackLocation);
     } catch (e) {
       if (!mounted) return;
@@ -179,10 +169,6 @@ class _RateForm extends ConsumerWidget {
     final colors = Theme.of(context).colorScheme;
     final currencyState = ref.watch(currencyProvider);
     final deliveryState = ref.watch(deliveryProvider);
-
-    if (currencyState.isLoading || deliveryState.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
 
     return SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
