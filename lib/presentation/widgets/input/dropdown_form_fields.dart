@@ -6,7 +6,7 @@ class ComboBoxPicker extends StatelessWidget {
   final String hint;
   final String label;
   final bool isRequired;
-  final String selectedId;
+  final String? selectedId;
   final String? Function( String? )? validator;
   final ValueChanged<String?>? onChanged;
   final List<DropdownMenuItem<String>> items;
@@ -16,7 +16,7 @@ class ComboBoxPicker extends StatelessWidget {
     required this.hint,
     required this.label,
     required this.isRequired,
-    required this.selectedId,
+    this.selectedId,
     required this.items,
     this.validator,
     this.onChanged
@@ -28,7 +28,7 @@ class ComboBoxPicker extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
 
     return DropdownButtonFormField<String>(
-      value: selectedId.isEmpty ? null : selectedId,
+      value: selectedId,
       hint: Text(hint),
       decoration: InputDecoration(
         enabledBorder: border,

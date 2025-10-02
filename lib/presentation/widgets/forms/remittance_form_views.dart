@@ -463,7 +463,7 @@ class _RemittanceFormState extends ConsumerState<_RemittanceForm> {
           Icon(
               Icons.add_card,
               color: colors.primary,
-              size: 60
+              size: 80
           ),
 
           const SizedBox(height: 30),

@@ -287,7 +287,7 @@ class _BankAccountFormState extends ConsumerState<_BankAccountForm> {
               Icon(
                   Icons.account_balance_rounded,
                   color: colors.primary,
-                  size: 60
+                  size: 80
               ),
 
               const SizedBox(height: 30),

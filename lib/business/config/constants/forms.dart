@@ -16,6 +16,7 @@ abstract class AppFormLabels {
   static const delivery = 'Seleccione un usuario';
   static const hintDeliverySearch = 'Buscar por remesero';
   static const hintCustomerSearch = 'Buscar por cliente';
+  static const partnerName = 'Nombre y Apellidos';
 
 }
 

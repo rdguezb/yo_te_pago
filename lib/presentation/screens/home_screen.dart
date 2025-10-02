@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:yo_te_pago/presentation/views/bank_views.dart';
 
+import 'package:yo_te_pago/presentation/views/bank_views.dart';
 import 'package:yo_te_pago/presentation/views/dashboard_views.dart';
 import 'package:yo_te_pago/presentation/views/rate_views.dart';
 import 'package:yo_te_pago/presentation/views/report_views.dart';
@@ -26,12 +26,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMixin {
 
   late PageController _pageController;
-  final _pages =  const <Widget>[
-    DashboardView(),
-    ReportView(),
-    RatesView(),
-    BankViews(),
-    SettingsView(),
+  final _pages =  <Widget>[
+    DashboardView(key: ValueKey('dashboard_page')),
+    ReportView(key: ValueKey('balance_page')),
+    RatesView(key: ValueKey('rates_page')),
+    BankViews(key: ValueKey('bank_page')),
+    SettingsView(key: ValueKey('settings_page')),
   ];
 
   @override

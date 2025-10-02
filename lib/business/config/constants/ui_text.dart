@@ -13,4 +13,7 @@ abstract class AppTitles {
   static const bankAccount = 'Cuentas Bancarias';
   static const bankAccountLink = 'Asociar Cuenta Bancaria';
 
+  static const myAccount = 'Mi Cuenta';
+  static const myPassword = 'Cambiar Contraseña';
+
 }

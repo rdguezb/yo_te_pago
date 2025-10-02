@@ -304,7 +304,7 @@ class _BalanceFormState extends ConsumerState<_BalanceForm> {
               Icon(
                   Icons.shopify_outlined,
                   color: colors.primary,
-                  size: 60
+                  size: 80
               ),
 
               const SizedBox(height: 30),

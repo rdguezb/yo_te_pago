@@ -8,31 +8,43 @@ import 'package:yo_te_pago/presentation/screens/loading_screen.dart';
 import 'package:yo_te_pago/presentation/screens/register_screen.dart';
 import 'package:yo_te_pago/presentation/widgets/forms/balance_form_views.dart';
 import 'package:yo_te_pago/presentation/widgets/forms/bank_account_form_views.dart';
+import 'package:yo_te_pago/presentation/widgets/forms/my_account_form_views.dart';
 import 'package:yo_te_pago/presentation/widgets/forms/rate_form_views.dart';
 import 'package:yo_te_pago/presentation/widgets/forms/remittance_form_views.dart';
+import 'package:yo_te_pago/presentation/widgets/under_construction_views.dart';
 
 
 final appRouterProvider = Provider<GoRouter>((ref) {
 
   final authNotifier = ref.watch(authNotifierProvider);
-  const String pathLoading = '/loading';
-  const String pathHome = '/home/:page';
-  const String pathRegister = '/register';
-  const String pathRemittance = '/remittance/edit/:id';
-  const String pathRemittanceCreate = '/remittance/create';
-  const String pathRateCreate = '/rate/create';
-  const String pathBalanceAdd = '/balance/create';
-  const String pathBankAccountLink = '/account/link';
+
+  const String loading = '/loading';
+  const String home = '/home/:page';
+  const String register = '/register';
+  const String editRemittance = '/remittance/edit/:id';
+  const String createRemittance = '/remittance/create';
+  const String createRate = '/rate/create';
+  const String createBalance = '/balance/create';
+  const String linkBankAccount = '/account/link';
+
+  const String myAccount = '/setting/account';
+  const String myPassword = '/setting/password';
+  const String users = '/setting/users';
+  const String currencies = '/setting/currencies';
+  const String banks = '/setting/banks';
+  const String bankAccounts = '/setting/bank-accounts';
+  const String settings = '/setting/settings';
+  const String appUpdate = '/setting/app-update';
 
   String getHomePath(int pageIndex) => '/home/$pageIndex';
 
   return GoRouter(
-    initialLocation: pathLoading,
+    initialLocation: loading,
     refreshListenable: authNotifier,
 
     routes: [
       GoRoute(
-        path: pathLoading,
+        path: loading,
         builder: (context, state) => const LoadingScreen()
       ),
       GoRoute(
@@ -40,7 +52,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         redirect: (_, __) => '/home/0'
       ),
       GoRoute(
-        path: pathHome,
+        path: home,
         name: HomeScreen.name,
         builder: (context, state) {
           final pageIndex = int.tryParse(state.pathParameters['page'] ?? '0') ?? 0;
@@ -49,12 +61,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: pathRegister,
+        path: register,
         name: RegisterScreen.name,
         builder: (context, state) => const RegisterScreen(),
       ),
       GoRoute(
-        path: pathRemittance,
+        path: editRemittance,
         name: RemittanceFormView.name,
         builder: (context, state) {
           final id = int.tryParse(state.pathParameters['id'] ?? '0');
@@ -63,37 +75,71 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: pathRemittanceCreate,
+        path: createRemittance,
         name: 'create-remittance',
         builder: (context, state) => const RemittanceFormView(),
       ),
       GoRoute(
-        path: pathRateCreate,
+        path: createRate,
         name: RateFormView.name,
         builder: (context, state) => const RateFormView(),
       ),
       GoRoute(
-        path: pathBalanceAdd,
+        path: createBalance,
         name: BalanceFormView.name,
         builder: (context, state) => const BalanceFormView(),
       ),
       GoRoute(
-        path: pathBankAccountLink,
+        path: linkBankAccount,
         name: BankAccountFormView.name,
         builder: (context, state) => const BankAccountFormView(),
-      )
+      ),
+      GoRoute(
+        path: myAccount,
+        name: MyAccountFormView.name,
+        builder: (context, state) => const MyAccountFormView(),
+      ),
+      GoRoute(
+        path: myPassword,
+        builder: (context, state) => const PlaceholderScreen(title: 'Cambiar Contraseña'),
+      ),
+      GoRoute(
+        path: users,
+        builder: (context, state) => const PlaceholderScreen(title: 'Usuarios'),
+      ),
+      GoRoute(
+        path: currencies,
+        builder: (context, state) => const PlaceholderScreen(title: 'Monedas'),
+      ),
+      GoRoute(
+        path: banks,
+        builder: (context, state) => const PlaceholderScreen(title: 'Bancos'),
+      ),
+      GoRoute(
+        path: bankAccounts,
+        builder: (context, state) => const PlaceholderScreen(title: 'Cuentas Bancarias'),
+      ),
+      GoRoute(
+        path: settings,
+        builder: (context, state) => const PlaceholderScreen(title: 'Configuración'),
+      ),
+      GoRoute(
+        path: appUpdate,
+        name: 'app-update', // Es buena práctica añadir un nombre único
+        builder: (context, state) => const PlaceholderScreen(title: 'Actualización'),
+      ),
     ],
 
     redirect: (BuildContext context, GoRouterState state) {
       final isAuthenticated = authNotifier.isLoggedIn;
-      final isGoingToLoading = state.matchedLocation == pathLoading;
+      final isGoingToLoading = state.matchedLocation == loading;
 
       if (!authNotifier.isInitialized) {
-        return isGoingToLoading ? null : pathLoading;
+        return isGoingToLoading ? null : loading;
       }
-      final isGoingToRegister = state.matchedLocation == pathRegister;
+      final isGoingToRegister = state.matchedLocation == register;
       if (!isAuthenticated && !isGoingToRegister) {
-        return pathRegister;
+        return register;
       }
       if (isAuthenticated && (isGoingToRegister || isGoingToLoading)) {
         return getHomePath(0);
