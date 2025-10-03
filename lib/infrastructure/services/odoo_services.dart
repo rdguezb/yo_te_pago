@@ -11,6 +11,7 @@ import 'package:yo_te_pago/business/domain/entities/rate.dart';
 import 'package:yo_te_pago/business/domain/entities/remittance.dart';
 import 'package:yo_te_pago/business/domain/entities/user.dart';
 import 'package:yo_te_pago/business/domain/services/ibase_service.dart';
+import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
 import 'package:yo_te_pago/infrastructure/models/dtos/bank_account_dto.dart';
 import 'package:yo_te_pago/infrastructure/models/dtos/currency_dto.dart';
 import 'package:yo_te_pago/infrastructure/models/dtos/user_dto.dart';
@@ -226,9 +227,12 @@ class OdooService extends IBaseService {
       return remittancesDto
           .map((dto) => dto.toModel())
           .toList();
+    } on OdooException catch (e) {
+      print('Error de Odoo al obtener remesas: ${e.message}');
+      rethrow;
     } catch (e) {
-      print('Error al obtener remesas: $e');
-      throw Exception('Error al obtener remesas');
+      print('Error inesperado al obtener remesas: $e');
+      throw OdooException('Ocurrió un error inesperado al procesar las remesas.');
     }
   }
 
@@ -248,11 +252,15 @@ class OdooService extends IBaseService {
         final Remittance res = Remittance.fromJson(data);
         return res;
       } else {
-        throw Exception('Respuesta del servidor inesperada o incompleta.');
+        final serverMessage = response?['message'] ?? 'The server returned an unexpected response after creating the remittance.';
+        throw OdooException(serverMessage);
       }
+    } on OdooException catch (e) {
+      print('OdooException while adding remittance: ${e.message}');
+      rethrow;
     } catch (e) {
-      print('Error al crear remesa: $e');
-      throw Exception('Error al añadir remesa');
+      print('Unexpected error while adding remittance: $e');
+      throw OdooException('An unexpected error occurred while processing the new remittance.');
     }
   }
 
@@ -268,15 +276,19 @@ class OdooService extends IBaseService {
         url,
         bodyParams: dataMap);
 
-      if (response != null && response.containsKey('message') && response['message'] == 'Remittance updated') {
+      if (response != null && response['success'] == true) {
         return true;
       } else {
-        throw Exception('Actualización exitosa pero respuesta del servidor inesperada.');
+        final serverMessage = response?['message'] ?? 'The server did not confirm the remittance update.';
+        throw OdooException(serverMessage);
       }
 
+    } on OdooException catch (e) {
+      print('OdooException while editing remittance with ID ${remittance.id}: ${e.message}');
+      rethrow;
     } catch (e) {
-      print('Error al actualizar remesa con ID ${remittance.id}: $e');
-      throw Exception('Error al actualizar la remesa. Verifique los datos, ID o permisos.');
+      print('Unexpected error while editing remittance with ID ${remittance.id}: $e');
+      throw OdooException('An unexpected error occurred while updating the remittance.');
     }
   }
 
@@ -289,14 +301,18 @@ class OdooService extends IBaseService {
         'PUT',
         url);
 
-      if (response != null && response.containsKey('message') && response['message'] == 'Remittance confirmed') {
+      if (response != null && response['success'] == true) {
         return true;
       } else {
-        throw Exception('Confirmación exitosa pero respuesta del servidor inesperada.');
+        final serverMessage = response?['message'] ?? 'The server did not confirm the remittance.';
+        throw OdooException(serverMessage);
       }
+    }  on OdooException catch (e) {
+      print('OdooException while confirming remittance with ID ${remittance.id}: ${e.message}');
+      rethrow;
     } catch (e) {
-      print('Error al confirmar remesa con ID ${remittance.id}: $e');
-      throw Exception('Error al confirmar la remesa. Verifique el estado o los permisos.');
+      print('Unexpected error while confirming remittance with ID ${remittance.id}: $e');
+      throw OdooException('An unexpected error occurred while confirming the remittance.');
     }
   }
 
@@ -309,14 +325,18 @@ class OdooService extends IBaseService {
           'PUT',
           url);
 
-      if (response != null && response.containsKey('message') && response['message'] == 'Remittance payed') {
+      if (response != null && response['success'] == true) {
         return true;
       } else {
-        throw Exception('Pago exitosa pero respuesta del servidor inesperada.');
+        final serverMessage = response?['message'] ?? 'The server did not confirm the payment.';
+        throw OdooException(serverMessage);
       }
+    } on OdooException catch (e) {
+      print('OdooException while paying remittance with ID ${remittance.id}: ${e.message}');
+      rethrow;
     } catch (e) {
-      print('Error al pagar remesa con ID ${remittance.id}: $e');
-      throw Exception('Error al pagar la remesa. Verifique el estado o los permisos.');
+      print('Unexpected error while paying remittance with ID ${remittance.id}: $e');
+      throw OdooException('An unexpected error occurred while paying the remittance.');
     }
   }
 
@@ -329,14 +349,18 @@ class OdooService extends IBaseService {
           'DELETE',
           url);
 
-      if (response != null && response.containsKey('message') && response['message'] == 'Remittance deleted') {
+      if (response != null && response['success'] == true) {
         return true;
       } else {
-        throw Exception('Eliminación exitosa pero respuesta del servidor inesperada.');
+        final serverMessage = response?['message'] ?? 'The server did not confirm the deletion.';
+        throw OdooException(serverMessage);
       }
+    } on OdooException catch (e) {
+      print('OdooException while deleting remittance with ID ${remittance.id}: ${e.message}');
+      rethrow;
     } catch (e) {
-      print('Error al eliminar remesa con ID ${remittance.id}: $e');
-      throw Exception('Error al eliminar la remesa. Verifique el estado o los permisos.');
+      print('Unexpected error while deleting remittance with ID ${remittance.id}: $e');
+      throw OdooException('An unexpected error occurred while deleting the remittance.');
     }
   }
 
@@ -363,9 +387,12 @@ class OdooService extends IBaseService {
       return currencyDto
           .map((dto) => dto.toModel())
           .toList();
+    } on OdooException catch (e) {
+      print('OdooException while getting currencies: ${e.message}');
+      rethrow;
     } catch (e) {
-      print('Error al obtener monedas: $e');
-      throw Exception('Error al obtener monedas');
+      print('Unexpected error while getting currencies: $e');
+      throw OdooException('An unexpected error occurred while getting the currencies.');
     }
   }
 
@@ -396,9 +423,12 @@ class OdooService extends IBaseService {
       return ratesDto
           .map((dto) => dto.toModel())
           .toList();
+    } on OdooException catch (e) {
+      print('OdooException while getting rates: ${e.message}');
+      rethrow;
     } catch (e) {
-      print('Error al obtener tasas: $e');
-      throw Exception('Error al obtener tasas');
+      print('Unexpected error while getting rates: $e');
+      throw OdooException('An unexpected error occurred while getting the rates.');
     }
   }
 
@@ -418,11 +448,15 @@ class OdooService extends IBaseService {
         final Rate res = Rate.fromJson(data);
         return res;
       } else {
-        throw Exception('Respuesta del servidor inesperada o incompleta.');
+        final serverMessage = response?['message'] ?? 'The server returned an unexpected response after creating the rate.';
+        throw OdooException(serverMessage);
       }
+    }on OdooException catch (e) {
+      print('OdooException while adding rate: ${e.message}');
+      rethrow;
     } catch (e) {
-      print('Error al crear tasa: $e');
-      throw Exception('Error al añadir tasa');
+      print('Unexpected error while adding rate: $e');
+      throw OdooException('An unexpected error occurred while adding the new rate.');
     }
   }
 
@@ -437,14 +471,18 @@ class OdooService extends IBaseService {
           url,
           bodyParams: dataMap);
 
-      if (response != null && response.containsKey('message') && response['message'] == 'Rate updated') {
+      if (response != null && response['success'] == true) {
         return true;
       } else {
-        throw Exception('Actualización exitosa pero respuesta del servidor inesperada.');
+        final serverMessage = response?['message'] ?? 'The server did not confirm the rate update.';
+        throw OdooException(serverMessage);
       }
+    } on OdooException catch (e) {
+      print('OdooException while changing rate with ID ${rate.id}: ${e.message}');
+      rethrow;
     } catch (e) {
-      print('Error al actualizar tasa con ID ${rate.id}: $e');
-      throw Exception('Error al cambiar valor de la tasa!');
+      print('Unexpected error while changing rate with ID ${rate.id}: $e');
+      throw OdooException('An unexpected error occurred while changing the rate value!');
     }
   }
 
@@ -457,14 +495,18 @@ class OdooService extends IBaseService {
           'DELETE',
           url);
 
-      if (response != null && response.containsKey('message') && response['message'] == 'Rate deleted') {
+      if (response != null && response['success'] == true) {
         return true;
       } else {
-        throw Exception('Eliminación exitosa pero respuesta del servidor inesperada.');
+        final serverMessage = response?['message'] ?? 'The server did not confirm the rate deletion.';
+        throw OdooException(serverMessage);
       }
+    } on OdooException catch (e) {
+      print('OdooException while deleting rate with ID ${rate.id}: ${e.message}');
+      rethrow;
     } catch (e) {
-      print('Error al eliminar tasa con ID ${rate.id}: $e');
-      throw Exception('Error al eliminar tasa');
+      print('Unexpected error while deleting rate with ID ${rate.id}: $e');
+      throw OdooException('An unexpected error occurred while deleting the rate.');
     }
   }
 
@@ -493,9 +535,12 @@ class OdooService extends IBaseService {
       return balanceDto
           .map((dto) => dto.toModel())
           .toList();
+    } on OdooException catch (e) {
+      print('OdooException while getting balances: ${e.message}');
+      rethrow;
     } catch (e) {
-      print('Error al obtener saldos: $e');
-      throw Exception('Error al obtener saldos');
+      print('Unexpected error while getting balances: $e');
+      throw OdooException('An unexpected error occurred while getting the balances.');
     }
   }
 
@@ -514,14 +559,18 @@ class OdooService extends IBaseService {
           OdooEndpoints.balanceBase,
           bodyParams: body);
 
-      if (response != null && response.containsKey('message') && response['message'] == 'Balance updated') {
+      if (response != null && response['success'] == true) {
         return true;
       } else {
-        throw Exception('Actualización exitosa pero respuesta del servidor inesperada.');
+        final serverMessage = response?['message'] ?? 'The server did not confirm the balance update.';
+        throw OdooException(serverMessage);
       }
+    } on OdooException catch (e) {
+      print('OdooException while updating balance: ${e.message}');
+      rethrow;
     } catch (e) {
-      print('Error al actualizar saldo: $e');
-      throw Exception('Error al actualizar saldo');
+      print('Unexpected error while updating balance: $e');
+      throw OdooException('An unexpected error occurred while updating the balance.');
     }
   }
 
@@ -554,9 +603,12 @@ class OdooService extends IBaseService {
       return accountDto
           .map((dto) => dto.toModel())
           .toList();
+    } on OdooException catch (e) {
+      print('Error de Odoo al obtener cuentas bancarias: ${e.message}');
+      rethrow;
     } catch (e) {
-      print('Error al obtener cuentas bancarias: $e');
-      throw Exception('Error al obtener cuentas bancarias');
+      print('Error inesperado al obtener cuentas bancarias: $e');
+      throw OdooException('Ocurrió un error inesperado al procesar las cuentas bancarias.');
     }
   }
 
@@ -574,14 +626,18 @@ class OdooService extends IBaseService {
           url,
           bodyParams: body);
 
-      if (response != null && response.containsKey('message') && response['message'] == 'Bank Account Deleted') {
+      if (response != null && response['success'] == true) {
         return true;
       } else {
-        throw Exception('Actualización exitosa pero respuesta del servidor inesperada.');
+        final serverMessage = response?['message'] ?? 'No success flag in response.';
+        throw OdooException(serverMessage);
       }
+    } on OdooException catch (e) {
+      print('Error de Odoo al desasociar cuenta bancaria: ${e.message}');
+      rethrow;
     } catch (e) {
-      print('Error al desasociar cuenta bancaria: $e');
-      throw Exception('Error al desasociar cuenta bancaria');
+      print('Error inesperado al desasociar cuenta bancaria: $e');
+      throw OdooException('An unexpected error occurred while unlinking the account.');
     }
   }
 
@@ -599,16 +655,19 @@ class OdooService extends IBaseService {
           url,
           bodyParams: body);
 
-      if (response != null && response.containsKey('message') && response['message'] == 'Bank Account Deleted') {
+      if (response != null && response['success'] == true) {
         return true;
       } else {
-        throw Exception('Actualización exitosa pero respuesta del servidor inesperada.');
+        final serverMessage = response?['message'] ?? 'No success flag in response.';
+        throw OdooException(serverMessage);
       }
+    } on OdooException catch (e) {
+      print('Error de Odoo al asociar cuenta bancaria: ${e.message}');
+      rethrow;
     } catch (e) {
-      print('Error al sasociar cuenta bancaria: $e');
-      throw Exception('Error al sasociar cuenta bancaria');
+      print('Error inesperado al asociar cuenta bancaria: $e');
+      throw OdooException('An unexpected error occurred while linking the account.');
     }
-
   }
 
   @override
@@ -634,10 +693,14 @@ class OdooService extends IBaseService {
       return accountDto
           .map((dto) => dto.toModel())
           .toList();
+    } on OdooException catch (e) {
+      print('Error de Odoo al obtener cuentas bancarias permitidas: ${e.message}');
+      rethrow;
     } catch (e) {
-      print('Error al obtener cuentas bancarias: $e');
-      throw Exception('Error al obtener cuentas bancarias');
-    }  }
+      print('Error inesperado al obtener cuentas bancarias permitidas: $e');
+      throw OdooException('Ocurrió un error inesperado al procesar las cuentas bancarias permitidas.');
+    }
+  }
 
 // User
 
@@ -664,9 +727,12 @@ class OdooService extends IBaseService {
       return userDto
           .map((dto) => dto.toModel())
           .toList();
+    } on OdooException catch (e) {
+      print('Error de Odoo al obtener usuarios: ${e.message}');
+      rethrow;
     } catch (e) {
-      print('Error al obtener usuarios: $e');
-      throw Exception('Error al obtener usuarios');
+      print('Error inesperado al obtener usuarios: $e');
+      throw OdooException('Ocurrió un error inesperado al procesar los usuarios.');
     }
   }
 
