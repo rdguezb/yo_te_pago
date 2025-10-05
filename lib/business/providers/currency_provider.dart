@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:yo_te_pago/business/config/constants/app_network_states.dart';
 import 'package:yo_te_pago/business/domain/entities/currency.dart';
+import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/infrastructure/services/odoo_services.dart';
 
@@ -25,7 +26,7 @@ class CurrencyState {
     return CurrencyState(
       currencies: currencies ?? this.currencies,
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: errorMessage
     );
   }
 }
@@ -37,50 +38,47 @@ class CurrencyNotifier extends StateNotifier<CurrencyState> {
 
   CurrencyNotifier(this._ref) : super(CurrencyState());
 
-  Future<void> loadCurrencies() async {
-    if (state.isLoading) {
-      return;
-    }
-
-    final OdooService? odooService = _ref.read(odooServiceProvider);
+  OdooService _getService() {
+    final odooService = _ref.read(odooServiceProvider);
     final odooSessionState = _ref.read(odooSessionNotifierProvider);
 
-    if (odooService == null || !odooSessionState.isAuthenticated) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: AppNetworkMessages.errorNoConection,
-      );
-      return;
+    if (!odooSessionState.isAuthenticated) {
+      throw OdooException(AppNetworkMessages.errorNoConection);
     }
+
+    return odooService;
+  }
+
+  Future<void> _fetchCurrencies() async {
     state = state.copyWith(
         isLoading: true,
         errorMessage: null);
-
     try {
-      final List<Currency> currencies = await odooService.getAvailableCurrencies();
-
+      final odooService = _getService();
+      final currencies = await odooService.getAvailableCurrencies();
       state = state.copyWith(
-        currencies: currencies,
-        isLoading: false,
-        errorMessage: null,
-      );
-    } catch (e) {
-      final errorMessage = e.toString().replaceFirst('Exception: ', '');
-      state = state.copyWith(
-          currencies: [],
+          currencies: currencies,
           isLoading: false,
-          errorMessage: errorMessage.isNotEmpty
-              ? errorMessage
-              : 'Error de red desconocido'
+          errorMessage: null
       );
+    } on OdooException catch (e) {
+      state = state.copyWith(
+          isLoading: false,
+          errorMessage: e.message);
+    } catch (e) {
+      state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'Ocurrió un error inesperado.');
     }
   }
 
+  Future<void> loadCurrencies() async {
+    if (state.currencies.isNotEmpty) return;
+    await _fetchCurrencies();
+  }
+
   Future<void> refreshCurrencies() async {
-    state = state.copyWith(
-        isLoading: true,
-        errorMessage: null);
-    await loadCurrencies();
+    await _fetchCurrencies();
   }
 
 }

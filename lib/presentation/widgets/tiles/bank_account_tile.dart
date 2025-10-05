@@ -1,20 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yo_te_pago/business/config/constants/app_remittance_states.dart';
 
+import 'package:yo_te_pago/business/config/constants/app_remittance_states.dart';
 import 'package:yo_te_pago/business/config/constants/app_roles.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
-import 'package:yo_te_pago/business/domain/entities/bank_account.dart';
-import 'package:yo_te_pago/business/providers/bank_account_provider.dart';
-import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
+import 'package:yo_te_pago/business/domain/entities/account.dart';
+import 'package:yo_te_pago/business/providers/account_provider.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/confirm_modal_dialog.dart';
 
 
 class BankAccountTile extends ConsumerWidget {
 
-  final BankAccount account;
+  final Account account;
   final String? role;
 
   const BankAccountTile({
@@ -22,55 +21,6 @@ class BankAccountTile extends ConsumerWidget {
     required this.account,
     this.role
   });
-
-  Future<void> _onDeleteAccount(BuildContext context, WidgetRef ref) async {
-    final bool confirm = await showDialog(
-      context: context,
-      builder: (context) => ConfirmModalDialog(
-        title: AppTitles.confirmation,
-        content: '¿Estás seguro de que quieres eliminar la cuenta bancaria ${account.toString()} de ${account.partnerName}?',
-        confirmButtonText: AppButtons.delete,
-        confirmButtonColor: Colors.blueAccent,
-      ),
-    ) ?? false;
-    if (!confirm) {
-      return;
-    }
-
-    final odooService = ref.read(odooServiceProvider);
-    final accountNotifier = ref.read(accountProvider.notifier);
-
-    try {
-      final bool success = await odooService.deleteBankAccount(account);
-      if (!context.mounted) {
-        return;
-      }
-      if (success) {
-        showCustomSnackBar(
-          context: context,
-          message: AppRemittanceMessages.accountDeletedSuccess,
-          type: SnackBarType.success,
-        );
-        await accountNotifier.loadAccounts();
-      } else {
-        showCustomSnackBar(
-          context: context,
-          message: AppRemittanceMessages.accountDeletedError,
-          type: SnackBarType.error,
-        );
-      }
-    } catch (e) {
-      if (!context.mounted) {
-        return;
-      }
-      showCustomSnackBar(
-        context: context,
-        message: 'Error al eliminar cuenta bancaria',
-        type: SnackBarType.error,
-      );
-    }
-
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -114,5 +64,37 @@ class BankAccountTile extends ConsumerWidget {
     );
   }
 
+  Future<void> _onDeleteAccount(BuildContext context, WidgetRef ref) async {
+    final bool confirm = await showDialog(
+      context: context,
+      builder: (context) => ConfirmModalDialog(
+        title: AppTitles.confirmation,
+        content: '¿Estás seguro de que quieres eliminar la cuenta bancaria ${account.toString()} de ${account.partnerName}?',
+        confirmButtonText: AppButtons.delete,
+        confirmButtonColor: Colors.blueAccent,
+      ),
+    ) ?? false;
+
+    if (!confirm) return;
+
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    try {
+      await ref.read(accountProvider.notifier).deleteAccount(account);
+
+      showCustomSnackBar(
+          scaffoldMessenger: scaffoldMessenger,
+          message: AppRemittanceMessages.accountDeletedSuccess,
+          type: SnackBarType.success
+      );
+    } catch (e) {
+      showCustomSnackBar(
+          scaffoldMessenger: scaffoldMessenger,
+          message: e.toString(),
+          type: SnackBarType.error
+      );
+    }
+
+  }
 
 }

@@ -109,37 +109,38 @@ class CustomSnackBarContent extends StatelessWidget {
 }
 
 void showCustomSnackBar({
-  required BuildContext context,
+  required ScaffoldMessengerState scaffoldMessenger,
   required String message,
   SnackBarType type = SnackBarType.info,
-  Duration duration = const Duration(seconds: 3),
+  Duration duration = const Duration(seconds: 4),
   String? actionLabel,
-  VoidCallback? onActionPressed,
+  VoidCallback? onActionPressed
 }) {
-  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-  final theme = Theme.of(context);
-  final colorScheme = _getColorScheme(theme, type);
+  scaffoldMessenger.hideCurrentSnackBar();
 
-  ScaffoldMessenger.of(context).showSnackBar(
+  final BuildContext context = scaffoldMessenger.context;
+  final ThemeData theme = Theme.of(context);
+  final _ColorScheme colorScheme = _getColorScheme(theme, type);
+
+  scaffoldMessenger.showSnackBar(
     SnackBar(
       content: CustomSnackBarContent(
         message: message,
         type: type,
-        theme: theme,
+        theme: theme
       ),
       backgroundColor: colorScheme.backgroundColor,
-      behavior: SnackBarBehavior.fixed,
+      behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
+        borderRadius: BorderRadius.circular(10.0)),
       duration: duration,
       action: actionLabel != null
           ? SnackBarAction(
               label: actionLabel,
               textColor: colorScheme.actionColor,
-              onPressed: onActionPressed ?? () {},
+              onPressed: onActionPressed ?? () {}
             )
-          : null,
-    ),
+          : null
+    )
   );
 }

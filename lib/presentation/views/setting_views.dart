@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:yo_te_pago/business/config/constants/setting_options.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
-import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
+import 'package:yo_te_pago/business/providers/auth_notifier.dart';
 
 
 class SettingsView extends ConsumerStatefulWidget {
@@ -21,9 +21,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
   @override
   Widget build(BuildContext context) {
-    final userRole = ref.read(odooSessionNotifierProvider).session?.role;
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final authState = ref.watch(authNotifierProvider);
+    final userRole = authState.session?.role;
 
     final List<SettingOptions> options = settingOptions
         .where((o) => o.allowedRoles.contains(userRole))

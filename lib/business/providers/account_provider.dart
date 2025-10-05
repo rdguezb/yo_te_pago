@@ -1,53 +1,52 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:yo_te_pago/business/config/constants/app_network_states.dart';
-import 'package:yo_te_pago/business/domain/entities/rate.dart';
+import 'package:yo_te_pago/business/domain/entities/account.dart';
 import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/infrastructure/services/odoo_services.dart';
 
 
-class RateState {
-  final List<Rate> rates;
+class AccountState {
+  final List<Account> accounts;
   final bool isLoading;
   final String? errorMessage;
   final String searchQuery;
 
-  RateState({
-    this.rates = const [],
+  AccountState({
+    this.accounts = const [],
     this.isLoading = false,
     this.errorMessage,
     this.searchQuery = ''
   });
 
-  List<Rate> get filteredRates => searchQuery.isEmpty
-      ? rates
-      : rates
+  List<Account> get filteredAccounts => searchQuery.isEmpty
+      ? accounts
+      : accounts
       .where((r) =>
         (r.partnerName ?? '').toLowerCase().contains(searchQuery.toLowerCase()))
       .toList();
 
-
-  RateState copyWith({
-    List<Rate>? rates,
+  AccountState copyWith({
+    List<Account>? accounts,
     bool? isLoading,
     String? errorMessage,
     String? searchQuery
   }) {
-    return RateState(
-      rates: rates ?? this.rates,
-      isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage,
-      searchQuery: searchQuery ?? this.searchQuery);
+    return AccountState(
+        accounts: accounts ?? this.accounts,
+        isLoading: isLoading ?? this.isLoading,
+        errorMessage: errorMessage,
+        searchQuery: searchQuery ?? this.searchQuery);
   }
 }
 
 
-class RateNotifier extends StateNotifier<RateState> {
+class AccountNotifier extends StateNotifier<AccountState> {
 
   final Ref _ref;
 
-  RateNotifier(this._ref) : super(RateState());
+  AccountNotifier(this._ref) : super(AccountState());
 
   OdooService _getService() {
     final odooService = _ref.read(odooServiceProvider);
@@ -60,18 +59,17 @@ class RateNotifier extends StateNotifier<RateState> {
     return odooService;
   }
 
-  Future<void> _fetchRates() async {
+  Future<void> _fetchAccounts() async {
     state = state.copyWith(
         isLoading: true,
         errorMessage: null);
     try {
       final odooService = _getService();
-      final rates = await odooService.getRates();
+      final accounts = await odooService.getAccounts();
       state = state.copyWith(
-          rates: rates,
+          accounts: accounts,
           isLoading: false,
-          errorMessage: null
-      );
+          errorMessage: null);
     } on OdooException catch (e) {
       state = state.copyWith(
           isLoading: false,
@@ -83,114 +81,82 @@ class RateNotifier extends StateNotifier<RateState> {
     }
   }
 
-  Future<void> loadRates() async {
-    if (state.rates.isNotEmpty) return;
-    await _fetchRates();
-  }
-
-  Future<void> addRate(Rate rate) async {
-    state = state.copyWith(
-        isLoading: true,
-        errorMessage: null);
-    try {
-      final odooService = _getService();
-      final newRate = await odooService.addRate(rate);
-
-      state = state.copyWith(
-          isLoading: false,
-          rates: [newRate, ...state.rates]);
-    } on OdooException catch (e) {
-      state = state.copyWith(
-          isLoading: false,
-          errorMessage: e.message);
-    } catch (e) {
-      state = state.copyWith(
-          isLoading: false,
-          errorMessage: 'Ocurrió un error inesperado al agregar.');
-    }
-  }
-
-  Future<void> changeRate(Rate rate) async {
-    state = state.copyWith(
-        isLoading: true,
-        errorMessage: null);
-    try {
-      bool success = false;
-      final odooService = _getService();
-      success = await odooService.changeRate(rate);
-
-      if (success) {
-        final index = state.rates
-            .indexWhere((r) => r.id == rate.id);
-        if (index != -1) {
-          final updatedList = List<Rate>.from(state.rates);
-          updatedList[index] = rate;
-          state = state.copyWith(
-              isLoading: false,
-              rates: updatedList);
-        } else {
-          await _fetchRates();
-        }
-      } else {
-        state = state.copyWith(
-            isLoading: false,
-            errorMessage: "La operación no se pudo completar en el servidor.");
-      }
-    } on OdooException catch (e) {
-      state = state.copyWith(
-          isLoading: false,
-          errorMessage: e.message);
-    } catch (e) {
-      state = state.copyWith(
-          isLoading: false,
-          errorMessage: 'Ocurrió un error inesperado al editar.');
-    }
-  }
-
-  Future<void> deleteRate(int rateId) async {
-    state = state.copyWith(
-        isLoading: true,
-        errorMessage: null);
-    try {
-      bool success = false;
-      final odooService = _getService();
-      success = await odooService.deleteRate(rateId);
-
-      if (success) {
-        final updatedList = state.rates
-            .where((r) => r.id != rateId).toList();
-        state = state.copyWith(
-            isLoading: false,
-            rates: updatedList);
-      } else {
-        state = state.copyWith(
-            isLoading: false,
-            errorMessage: "La operación no se pudo completar en el servidor.");
-      }
-    } on OdooException catch (e) {
-      state = state.copyWith(
-          isLoading: false,
-          errorMessage: e.message);
-    } catch (e) {
-      state = state.copyWith(
-          isLoading: false,
-          errorMessage: 'Ocurrió un error inesperado al eliminar.');
-
-    }
+  Future<void> loadAccounts() async {
+    if (state.accounts.isNotEmpty) return;
+    await _fetchAccounts();
   }
 
   void setSearchQuery(String query) {
     state = state.copyWith(searchQuery: query);
   }
 
-  Future<void> refreshRates() async {
-    await _fetchRates();
+  Future<void> refreshAccounts() async {
+    await _fetchAccounts();
+  }
+  
+  Future<void> deleteAccount(Account account) async {
+    state = state.copyWith(
+        isLoading: true,
+        errorMessage: null);
+    try {
+      bool success = false;
+      final odooService = _getService();
+      success = await odooService.deleteAccount(account);
+
+      if (success) {
+        final updatedList = state.accounts
+            .where((a) => a.id != account.id)
+            .toList();
+        state = state.copyWith(
+            isLoading: false,
+            accounts: updatedList);
+      } else {
+        state = state.copyWith(
+            isLoading: false,
+            errorMessage: "La operación no se pudo completar en el servidor.");
+      }
+    } on OdooException catch (e) {
+      state = state.copyWith(
+          isLoading: false,
+          errorMessage: e.message);
+    } catch (e) {
+      state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'Ocurrió un error inesperado al desasociar.');
+    }
+  }
+
+  Future<void> linkAccount(Account account) async {
+    state = state.copyWith(
+        isLoading: true,
+        errorMessage: null);
+    try {
+      bool success = false;
+      final odooService = _getService();
+      success = await odooService.linkAccount(account);
+
+      if (success) {
+        await _fetchAccounts();
+      } else {
+        state = state.copyWith(
+            isLoading: false,
+            errorMessage: "La operación no se pudo completar en el servidor.");
+      }
+    } on OdooException catch (e) {
+      state = state.copyWith(
+          isLoading: false,
+          errorMessage: e.message);
+    } catch (e) {
+      state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'Ocurrió un error inesperado al asociar.');
+    }
   }
 
 }
 
 
-final rateProvider = StateNotifierProvider<RateNotifier, RateState>((ref) {
+final accountProvider = StateNotifierProvider<AccountNotifier, AccountState>((ref) {
 
-  return RateNotifier(ref);
+  return AccountNotifier(ref);
 });

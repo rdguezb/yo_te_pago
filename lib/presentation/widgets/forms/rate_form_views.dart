@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,10 +10,12 @@ import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/helpers/form_fields_validators.dart';
 import 'package:yo_te_pago/business/domain/entities/rate.dart';
+import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
 import 'package:yo_te_pago/business/providers/currency_provider.dart';
 import 'package:yo_te_pago/business/providers/delivery_provider.dart';
-import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
-import 'package:yo_te_pago/presentation/widgets/input/custom_text_form_fields.dart';
+import 'package:yo_te_pago/business/providers/rate_provider.dart';
+import 'package:yo_te_pago/presentation/routes/app_router.dart';
+import 'package:yo_te_pago/presentation/widgets/input/decimal_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/input/dropdown_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 
@@ -33,7 +36,7 @@ class RateFormView extends ConsumerStatefulWidget {
 class _RateFormViewState extends ConsumerState<RateFormView> {
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  final String goBackLocation = appBottomNavigationItems['rate']!.path;
+
   final TextEditingController _rateController = TextEditingController();
 
   String? _selectedCurrencyId;
@@ -43,9 +46,13 @@ class _RateFormViewState extends ConsumerState<RateFormView> {
   void initState() {
     super.initState();
 
-    Future.microtask(() {
-      ref.read(currencyProvider.notifier).loadCurrencies();
-      ref.read(deliveryProvider.notifier).loadDeliveries();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ref.read(currencyProvider).currencies.isEmpty) {
+        ref.read(currencyProvider.notifier).loadCurrencies();
+      }
+      if (ref.read(deliveryProvider).deliveries.isEmpty) {
+        ref.read(deliveryProvider.notifier).loadDeliveries();
+      }
     });
   }
 
@@ -56,65 +63,12 @@ class _RateFormViewState extends ConsumerState<RateFormView> {
     super.dispose();
   }
 
-  Future<void> _saveRate() async {
-    if (!(_formKey.currentState?.validate() ?? false)) {
-      showCustomSnackBar(
-          context: context,
-          message: AppRecordMessages.formHasErrors,
-          type: SnackBarType.warning);
-      return;
-    }
-
-    if (_selectedCurrencyId == null || _selectedDeliveryId == null) {
-      showCustomSnackBar(
-          context: context,
-          message: AppValidationMessages.selectionRequired,
-          type: SnackBarType.warning);
-      return;
-    }
-
-    if (!mounted) return;
-
-    final odooService = ref.read(odooServiceProvider);
-    final amount = double.tryParse(_rateController.text) ?? 0.0;
-
-    try {
-      final currency = ref.read(currencyProvider).currencies.firstWhere(
-              (c) => c.id.toString() == _selectedCurrencyId);
-      final delivery = ref.read(deliveryProvider).deliveries.firstWhere(
-              (c) => c.id.toString() == _selectedDeliveryId);
-
-      final rate = Rate(
-          currencyId: currency.id!,
-          name: currency.name,
-          fullName: currency.fullName,
-          symbol: currency.symbol,
-          rate: amount,
-          partnerId: delivery.id!);
-
-      await odooService.addRate(rate);
-
-      if (!mounted) return;
-      showCustomSnackBar(
-        context: context,
-        message: AppRecordMessages.registerSuccess,
-        type: SnackBarType.success,
-      );
-
-      context.go(goBackLocation);
-    } catch (e) {
-      if (!mounted) return;
-      showCustomSnackBar(
-          context: context,
-          message: e.toString(),
-          type: SnackBarType.error);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final currencyState = ref.watch(currencyProvider);
     final deliveryState = ref.watch(deliveryProvider);
+
+    final goBackLocation = ref.read(appRouterProvider).namedLocation(appBottomNavigationItems['rate']!.path);
 
     return Scaffold(
         appBar: AppBar(
@@ -126,8 +80,7 @@ class _RateFormViewState extends ConsumerState<RateFormView> {
             )
         ),
         body: SafeArea(
-            child: (currencyState.isLoading && currencyState.currencies.isEmpty) ||
-                (deliveryState.isLoading && deliveryState.deliveries.isEmpty)
+            child: (currencyState.isLoading || deliveryState.isLoading)
                 ? const Center(child: CircularProgressIndicator())
                 : _RateForm(
                     formKey: _formKey,
@@ -140,6 +93,74 @@ class _RateFormViewState extends ConsumerState<RateFormView> {
                 )
         )
     );
+  }
+
+  Future<void> _saveRate() async {
+    if (!mounted) return;
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final router = GoRouter.of(context);
+
+    final form = _formKey.currentState;
+    if (form == null || !form.validate()) {
+      showCustomSnackBar(
+          scaffoldMessenger: scaffoldMessenger,
+          message: AppRecordMessages.formHasErrors,
+          type: SnackBarType.warning);
+
+      return;
+    }
+
+    if (_selectedCurrencyId == null || _selectedDeliveryId == null) {
+      showCustomSnackBar(
+          scaffoldMessenger: scaffoldMessenger,
+          message: AppValidationMessages.selectionRequired,
+          type: SnackBarType.warning);
+      return;
+    }
+
+    final amount = double.tryParse(_rateController.text) ?? 0.0;
+
+    try {
+      final currency = ref.read(currencyProvider).currencies.firstWhereOrNull(
+              (c) => c.id.toString() == _selectedCurrencyId);
+      final delivery = ref.read(deliveryProvider).deliveries.firstWhereOrNull(
+              (c) => c.id.toString() == _selectedDeliveryId);
+
+      if (currency == null || delivery == null) {
+        showCustomSnackBar(
+            scaffoldMessenger: scaffoldMessenger,
+            message: 'La moneda o remesero seleccionado ya no son válidos.',
+            type: SnackBarType.error);
+        return;
+      }
+
+      final rateToSave = Rate(
+          currencyId: currency.id!,
+          name: currency.name,
+          fullName: currency.fullName,
+          symbol: currency.symbol,
+          rate: amount,
+          partnerId: delivery.id!);
+
+      await ref.read(rateProvider.notifier).addRate(rateToSave);
+
+      showCustomSnackBar(
+          scaffoldMessenger: scaffoldMessenger,
+          message: AppRecordMessages.registerSuccess,
+          type: SnackBarType.success);
+
+      router.pop();
+    } on OdooException catch (e) {
+      showCustomSnackBar(
+          scaffoldMessenger: scaffoldMessenger,
+          message: e.message,
+          type: SnackBarType.error);
+    } catch (e) {
+      showCustomSnackBar(
+          scaffoldMessenger: scaffoldMessenger,
+          message: 'Ocurrió un error inesperado al guardar la tasa.',
+          type: SnackBarType.error);
+    }
   }
 
 }
@@ -194,11 +215,12 @@ class _RateForm extends ConsumerWidget {
 
                 const SizedBox(height: 20),
 
-                CustomTextFormField(
+                DecimalTextFormField(
                   label: AppFormLabels.amount,
                   controller: rateController,
                   isRequired: true,
-                  validator: (value) => FormValidators.validateRequired(value)),
+                  validator: (value) => FormValidators.validateDouble(value)
+                ),
 
                 const SizedBox(height: 40),
 

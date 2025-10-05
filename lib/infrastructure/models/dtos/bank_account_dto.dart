@@ -6,9 +6,7 @@ class BankAccountDto extends BankAccount {
   BankAccountDto({
     required super.id,
     required super.name,
-    required super.bankName,
-    super.partnerId,
-    super.partnerName
+    required super.bankName
   });
 
   factory BankAccountDto.fromJson(Map<String, dynamic> json) {
@@ -16,9 +14,7 @@ class BankAccountDto extends BankAccount {
     return BankAccountDto(
         id: (json['id'] as int?) ?? 0,
         name: (json['acc_number'] as String?) ?? 'N/A',
-        bankName: (json['bank_name'] as String?) ?? 'No Bank',
-        partnerId: (json['partner_id'] as int?) ?? 0,
-        partnerName: (json['partner_name'] as String?) ?? ''
+        bankName: (json['bank_name'] as String?) ?? 'No Bank'
     );
   }
 
@@ -27,9 +23,7 @@ class BankAccountDto extends BankAccount {
     return BankAccount(
         id: id,
         name: name,
-        bankName: bankName,
-        partnerId: partnerId,
-        partnerName: partnerName
+        bankName: bankName
     );
   }
 

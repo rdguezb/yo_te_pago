@@ -8,7 +8,6 @@ import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/domain/entities/remittance.dart';
 import 'package:yo_te_pago/business/providers/remittance_provider.dart';
-import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/confirm_modal_dialog.dart';
 
@@ -23,6 +22,64 @@ class RemittanceTile extends ConsumerWidget {
     required this.remittance,
     this.role
   });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    Color textColor = _getTileColor(context);
+    final colors = Theme.of(context).colorScheme;
+    final userRole = role ?? '';
+
+    return Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        elevation: 4.0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        child: Padding(
+            padding: const EdgeInsets.all(4.0),
+            child: ListTile(
+              title: Text(
+                  remittance.customer,
+                  style: TextStyle(
+                      color: textColor,
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.bold)),
+              subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _getBankAccountRow(textColor.withAlpha(178)),
+                    _getCurrencyRow(textColor.withAlpha(178))
+                  ]
+              ),
+              trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (remittance.isWaiting && userRole == ApiRole.delivery)
+                      IconButton(
+                          icon: const Icon(Icons.mode_edit_rounded),
+                          color: textColor,
+                          onPressed: () => context.go('/remittance/edit/${remittance.id}')),
+                    if ((remittance.isWaiting || remittance.isCanceled) && (userRole == ApiRole.delivery || userRole == ApiRole.manager))
+                      IconButton(
+                          icon: const Icon(Icons.delete_outline_sharp),
+                          color: colors.error,
+                          onPressed: () => _onDelete(context, ref)),
+                    if (remittance.isConfirmed &&  userRole == ApiRole.delivery)
+                      IconButton(
+                          iconSize: 40.0,
+                          icon: const Icon(Icons.check_rounded),
+                          color: colors.primary,
+                          onPressed: () => _onPay(context, ref)),
+                    if (remittance.isWaiting && userRole == ApiRole.user)
+                      IconButton(
+                          iconSize: 40.0,
+                          icon: const Icon(Icons.thumb_up_alt_rounded),
+                          color: colors.primary,
+                          onPressed: () => _onConfirm(context, ref)),
+                  ]
+              ),
+            )
+        )
+    );
+  }
 
   Color _getTileColor(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -47,43 +104,25 @@ class RemittanceTile extends ConsumerWidget {
         confirmButtonColor: Colors.blueAccent,
       ),
     ) ?? false;
-    if (!context.mounted) {
-      return;
-    }
+
     if (!confirm) {
       return;
     }
 
-    final odooService = ref.read(odooServiceProvider);
-    final remittanceNotifier = ref.read(remittanceProvider.notifier);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     try {
-      final bool success = await odooService.payRemittance(remittance);
-      if (!context.mounted) {
-        return;
-      }
+      await ref.read(remittanceProvider.notifier).payRemittance(remittance.id!);
 
-      if (success) {
-        showCustomSnackBar(
-          context: context,
-          message: AppRemittanceMessages.remittancePaidSuccess,
-          type: SnackBarType.success,
-        );
-        await remittanceNotifier.loadRemittances();
-      } else {
-        showCustomSnackBar(
-          context: context,
-          message: AppRemittanceMessages.remittancePaidError,
-          type: SnackBarType.error,
-        );
-      }
-    } catch (e) {
-      if (!context.mounted) {
-        return;
-      }
       showCustomSnackBar(
-        context: context,
-        message: 'Error al marcar como pagada',
+        scaffoldMessenger: scaffoldMessenger,
+        message: AppRemittanceMessages.remittancePaidSuccess,
+        type: SnackBarType.success,
+      );
+    } catch (e) {
+      showCustomSnackBar(
+        scaffoldMessenger: scaffoldMessenger,
+        message: e.toString(),
         type: SnackBarType.error,
       );
     }
@@ -99,39 +138,25 @@ class RemittanceTile extends ConsumerWidget {
         confirmButtonColor: Colors.blueAccent,
       ),
     ) ?? false;
+
     if (!confirm) {
       return;
     }
 
-    final odooService = ref.read(odooServiceProvider);
-    final remittanceNotifier = ref.read(remittanceProvider.notifier);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     try {
-      final bool success = await odooService.deleteRemittance(remittance);
-      if (!context.mounted) {
-        return;
-      }
-      if (success) {
-        showCustomSnackBar(
-          context: context,
-          message: AppRemittanceMessages.remittanceDeletedSuccess,
-          type: SnackBarType.success,
-        );
-        await remittanceNotifier.loadRemittances();
-      } else {
-        showCustomSnackBar(
-          context: context,
-          message: AppRemittanceMessages.remittanceDeletedError,
-          type: SnackBarType.error,
-        );
-      }
-    } catch (e) {
-      if (!context.mounted) {
-        return;
-      }
+      await ref.read(remittanceProvider.notifier).deleteRemittance(remittance.id!);
+
       showCustomSnackBar(
-        context: context,
-        message: 'Error al eliminar remesa',
+        scaffoldMessenger: scaffoldMessenger,
+        message: AppRemittanceMessages.remittanceDeletedSuccess,
+        type: SnackBarType.success,
+      );
+    } catch (e) {
+      showCustomSnackBar(
+        scaffoldMessenger: scaffoldMessenger,
+        message: e.toString(),
         type: SnackBarType.error,
       );
     }
@@ -147,44 +172,24 @@ class RemittanceTile extends ConsumerWidget {
         confirmButtonColor: Colors.blueAccent,
       ),
     ) ?? false;
-    if (!context.mounted) {
-      return;
-    }
+
     if (!confirm) {
       return;
     }
-
-    final odooService = ref.read(odooServiceProvider);
-    final remittanceNotifier = ref.read(remittanceProvider.notifier);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     try {
-      final bool success = await odooService.confirmRemittance(remittance);
-      if (!context.mounted) {
-        return;
-      }
-
-      if (success) {
-        showCustomSnackBar(
-          context: context,
-          message: AppRemittanceMessages.remittanceConfirmSuccess,
-          type: SnackBarType.success,
-        );
-        await remittanceNotifier.loadRemittances();
-      } else {
-        showCustomSnackBar(
-          context: context,
-          message: AppRemittanceMessages.remittanceConfirmError,
-          type: SnackBarType.error,
-        );
-      }
-    } catch (e) {
-      if (!context.mounted) {
-        return;
-      }
+      await ref.read(remittanceProvider.notifier).confirmRemittance(remittance.id!);
       showCustomSnackBar(
-        context: context,
-        message: 'Error al marcar como confirmada',
-        type: SnackBarType.error,
+        scaffoldMessenger: scaffoldMessenger,
+        message: AppRemittanceMessages.remittanceConfirmSuccess,
+        type: SnackBarType.success
+      );
+    } catch (e) {
+      showCustomSnackBar(
+        scaffoldMessenger: scaffoldMessenger,
+        message: e.toString(),
+        type: SnackBarType.error
       );
     }
   }
@@ -224,64 +229,6 @@ class RemittanceTile extends ConsumerWidget {
           ),
         ),
       ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    Color textColor = _getTileColor(context);
-    final colors = Theme.of(context).colorScheme;
-    final userRole = role ?? '';
-
-    return Card(
-        margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-        elevation: 4.0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-        child: Padding(
-            padding: const EdgeInsets.all(4.0),
-            child: ListTile(
-              title: Text(
-                  remittance.customer,
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 20.0,
-                    fontWeight: FontWeight.bold)),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _getBankAccountRow(textColor.withAlpha(178)),
-                  _getCurrencyRow(textColor.withAlpha(178))
-                ]
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (remittance.isWaiting && userRole == ApiRole.delivery)
-                    IconButton(
-                        icon: const Icon(Icons.mode_edit_rounded),
-                        color: textColor,
-                        onPressed: () => context.go('/remittance/edit/${remittance.id}')),
-                  if ((remittance.isWaiting || remittance.isCanceled) && (userRole == ApiRole.delivery || userRole == ApiRole.manager))
-                    IconButton(
-                        icon: const Icon(Icons.delete_outline_sharp),
-                        color: colors.error,
-                        onPressed: () => _onDelete(context, ref)),
-                  if (remittance.isConfirmed &&  userRole == ApiRole.delivery)
-                    IconButton(
-                        iconSize: 40.0,
-                        icon: const Icon(Icons.check_rounded),
-                        color: colors.primary,
-                        onPressed: () => _onPay(context, ref)),
-                  if (remittance.isWaiting && userRole == ApiRole.user)
-                    IconButton(
-                        iconSize: 40.0,
-                        icon: const Icon(Icons.thumb_up_alt_rounded),
-                        color: colors.primary,
-                        onPressed: () => _onConfirm(context, ref)),
-                ]
-              ),
-            )
-        )
     );
   }
 

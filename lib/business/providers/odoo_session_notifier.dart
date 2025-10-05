@@ -29,10 +29,10 @@ class OdooSessionState {
     String? errorMessage,
   }) {
     return OdooSessionState(
-      session: session ?? this.session,
-      isAuthenticated: isAuthenticated ?? this.isAuthenticated,
-      isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage ?? this.errorMessage,
+        session: session ?? this.session,
+        isAuthenticated: isAuthenticated ?? this.isAuthenticated,
+        isLoading: isLoading ?? this.isLoading,
+        errorMessage: errorMessage
     );
   }
 
@@ -50,22 +50,28 @@ class OdooSessionNotifier extends StateNotifier<OdooSessionState> {
   OdooService? get odooService => _currentOdooService;
 
   Future<void> _initializeSession() async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    await _performAuthentication(
+      isInitial: true,
+      noCredentialsError: AppAuthMessages.errorNoCredentialsFound,
+      authFailedError: AppAuthMessages.errorFailedToRestoreSession,
+      unexpectedError: 'Error al restablecer sesión',
+    );
+  }
 
-    state = state.copyWith(
-        isLoading: true,
-        errorMessage: null);
-
+  Future<bool> _performAuthentication({
+    required bool isInitial,
+    required String noCredentialsError,
+    required String authFailedError,
+    required String unexpectedError,
+  }) async {
     try {
       final userData = await _appDataRepository.getByKey(ApiConfig.keyUser);
       final passwordData = await _appDataRepository.getByKey(ApiConfig.keyPass);
 
       if (userData == null || passwordData == null || userData.valueStr.isEmpty || passwordData.valueStr.isEmpty) {
-        state = state.copyWith(
-          isAuthenticated: false,
-          isLoading: false,
-          errorMessage: AppAuthMessages.errorNoCredentialsFound,
-        );
-        return;
+        state = state.copyWith(isAuthenticated: false, isLoading: false, errorMessage: noCredentialsError);
+        return false;
       }
 
       final OdooService odooServiceInstance = OdooService();
@@ -82,66 +88,34 @@ class OdooSessionNotifier extends StateNotifier<OdooSessionState> {
           isAuthenticated: true,
           isLoading: false,
         );
+        return true;
       } else {
         state = state.copyWith(
           isAuthenticated: false,
           isLoading: false,
-          errorMessage:AppAuthMessages.errorFailedToRestoreSession,
+          errorMessage: authFailedError,
         );
+        return false;
       }
-
     } catch (e) {
       _currentOdooService = null;
       state = state.copyWith(
         isAuthenticated: false,
         isLoading: false,
-        errorMessage: 'Error al restablecer sesión',
+        errorMessage: unexpectedError,
       );
+      return false;
     }
   }
 
   Future<void> login() async {
-
-    state = state.copyWith(
-        isLoading: true,
-        errorMessage: null);
-    try {
-      final userData = await _appDataRepository.getByKey(ApiConfig.keyUser);
-      final passwordData = await _appDataRepository.getByKey(ApiConfig.keyPass);
-
-      if (userData == null || passwordData == null || userData.valueStr.isEmpty || passwordData.valueStr.isEmpty) {
-        throw Exception(AppAuthMessages.errorNoCredentialsFound);
-      }
-      final OdooService odooService = OdooService();
-      final bool authSuccess = await odooService.authenticate(
-        userData.valueStr,
-        passwordData.valueStr,
-      );
-
-      if (authSuccess) {
-        final OdooAuth sessionInfo = odooService.odooSessionInfo;
-        _currentOdooService = odooService;
-        state = state.copyWith(
-          session: sessionInfo,
-          isAuthenticated: true,
-          isLoading: false,
-        );
-      } else {
-        state = state.copyWith(
-          isAuthenticated: false,
-          isLoading: false,
-          errorMessage: AppAuthMessages.errorFailedToLogin,
-        );
-      }
-
-    } catch (e) {
-      _currentOdooService = null;
-      state = state.copyWith(
-        isAuthenticated: false,
-        isLoading: false,
-        errorMessage: 'Error al iniciar sesión',
-      );
-    }
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    await _performAuthentication(
+      isInitial: false,
+      noCredentialsError: AppAuthMessages.errorNoCredentialsFound,
+      authFailedError: AppAuthMessages.errorFailedToLogin,
+      unexpectedError: 'Error al iniciar sesión',
+    );
   }
 
   Future<void> logout() async {
@@ -158,13 +132,11 @@ class OdooSessionNotifier extends StateNotifier<OdooSessionState> {
   @override
   void dispose() {
     if (_currentOdooService != null && state.isAuthenticated) {
-      _currentOdooService!.logout().then((_) {
-      }).catchError((e) {
-        throw Exception('OdooService: Error durante el cierre de sesión: $e');
+      _currentOdooService!.logout().catchError((e) {
+        print('OdooService: Error durante el cierre de sesión en dispose: \$e');
       });
     }
     _currentOdooService = null;
-
     super.dispose();
   }
 

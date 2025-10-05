@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,10 +9,12 @@ import 'package:yo_te_pago/business/config/constants/bottom_bar_items.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/helpers/form_fields_validators.dart';
+import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
+import 'package:yo_te_pago/business/providers/balance_provider.dart';
 import 'package:yo_te_pago/business/providers/currency_provider.dart';
 import 'package:yo_te_pago/business/providers/delivery_provider.dart';
-import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
-import 'package:yo_te_pago/presentation/widgets/input/custom_text_form_fields.dart';
+import 'package:yo_te_pago/presentation/routes/app_router.dart';
+import 'package:yo_te_pago/presentation/widgets/input/decimal_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/input/dropdown_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 
@@ -31,7 +34,7 @@ class BalanceFormView extends ConsumerStatefulWidget {
 class _BalanceFormViewState extends ConsumerState<BalanceFormView> {
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  final String goBackLocation = appBottomNavigationItems['balance']!.path;
+
   final TextEditingController _amountController = TextEditingController();
 
   String? _selectedCurrencyId;
@@ -41,9 +44,13 @@ class _BalanceFormViewState extends ConsumerState<BalanceFormView> {
   void initState() {
     super.initState();
 
-    Future.microtask(() {
-      ref.read(currencyProvider.notifier).loadCurrencies();
-      ref.read(deliveryProvider.notifier).loadDeliveries();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ref.read(currencyProvider).currencies.isEmpty) {
+        ref.read(currencyProvider.notifier).loadCurrencies();
+      }
+      if (ref.read(deliveryProvider).deliveries.isEmpty) {
+        ref.read(deliveryProvider.notifier).loadDeliveries();
+      }
     });
   }
 
@@ -54,60 +61,12 @@ class _BalanceFormViewState extends ConsumerState<BalanceFormView> {
     super.dispose();
   }
 
-  Future<void> _updateBalance(String action) async {
-    if (!(_formKey.currentState?.validate() ?? false)) {
-      showCustomSnackBar(
-          context: context,
-          message: AppRecordMessages.formHasErrors,
-          type: SnackBarType.warning);
-      return;
-    }
-
-    if (_selectedCurrencyId == null || _selectedDeliveryId == null) {
-      showCustomSnackBar(
-          context: context,
-          message: AppValidationMessages.selectionRequired,
-          type: SnackBarType.warning);
-      return;
-    }
-
-    if (!mounted) return;
-
-    final odooService = ref.read(odooServiceProvider);
-    final amount = double.tryParse(_amountController.text) ?? 0.0;
-
-    try {
-      final currency = ref.read(currencyProvider).currencies.firstWhere(
-              (c) => c.id.toString() == _selectedCurrencyId);
-      final delivery = ref.read(deliveryProvider).deliveries.firstWhere(
-              (c) => c.id.toString() == _selectedDeliveryId);
-
-      await odooService.updateBalance(currency.id!,
-          delivery.id!,
-          amount,
-          action);
-
-      if (!mounted) return;
-      showCustomSnackBar(
-        context: context,
-        message: AppRecordMessages.registerSuccess,
-        type: SnackBarType.success,
-      );
-
-      context.go(goBackLocation);
-    } catch (e) {
-      if (!mounted) return;
-      showCustomSnackBar(
-          context: context,
-          message: e.toString(),
-          type: SnackBarType.error);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final currencyState = ref.watch(currencyProvider);
     final deliveryState = ref.watch(deliveryProvider);
+
+    final goBackLocation = ref.read(appRouterProvider).namedLocation(appBottomNavigationItems['balance']!.path);
 
     return Scaffold(
         appBar: AppBar(
@@ -119,8 +78,7 @@ class _BalanceFormViewState extends ConsumerState<BalanceFormView> {
             )
         ),
         body: SafeArea(
-            child: (currencyState.isLoading && currencyState.currencies.isEmpty) ||
-            (deliveryState.isLoading && deliveryState.deliveries.isEmpty)
+            child: (currencyState.isLoading || deliveryState.isLoading)
             ? const Center(child: CircularProgressIndicator())
             : _BalanceForm(
                 formKey: _formKey,
@@ -133,6 +91,69 @@ class _BalanceFormViewState extends ConsumerState<BalanceFormView> {
         )
     );
 
+  }
+
+  Future<void> _updateBalance(String action) async {
+    if (!mounted) return;
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final router = GoRouter.of(context);
+
+    final form = _formKey.currentState;
+    if (form == null || !form.validate()) {
+      showCustomSnackBar(
+          scaffoldMessenger: scaffoldMessenger,
+          message: AppRecordMessages.formHasErrors,
+          type: SnackBarType.warning);
+      return;
+    }
+
+    if (_selectedCurrencyId == null || _selectedDeliveryId == null) {
+      showCustomSnackBar(
+          scaffoldMessenger: scaffoldMessenger,
+          message: AppValidationMessages.selectionRequired,
+          type: SnackBarType.warning);
+      return;
+    }
+
+    final amount = double.tryParse(_amountController.text) ?? 0.0;
+
+    try {
+      final currency = ref.read(currencyProvider).currencies.firstWhereOrNull(
+              (c) => c.id.toString() == _selectedCurrencyId);
+      final delivery = ref.read(deliveryProvider).deliveries.firstWhereOrNull(
+              (c) => c.id.toString() == _selectedDeliveryId);
+
+      if (currency == null || delivery == null) {
+        showCustomSnackBar(
+            scaffoldMessenger: scaffoldMessenger,
+            message: 'La moneda o remesero seleccionado ya no son válidos.',
+            type: SnackBarType.error);
+        return;
+      }
+
+      await ref.read(balanceProvider.notifier).updateBalance(
+          currency.id!,
+          delivery.id!,
+          amount,
+          action);
+
+      showCustomSnackBar(
+          scaffoldMessenger: scaffoldMessenger,
+          message: AppRecordMessages.balanceUpdateSuccess,
+          type: SnackBarType.success);
+
+      router.pop();
+    } on OdooException catch (e) {
+      showCustomSnackBar(
+          scaffoldMessenger: scaffoldMessenger,
+          message: e.message,
+          type: SnackBarType.error);
+    } catch (e) {
+      showCustomSnackBar(
+          scaffoldMessenger: scaffoldMessenger,
+          message: 'Ocurrió un error inesperado al actualizar los saldos.',
+          type: SnackBarType.error);
+    }
   }
 
 }
@@ -187,15 +208,14 @@ class _BalanceForm extends ConsumerWidget {
 
                 const SizedBox(height: 20),
 
-                CustomTextFormField(
-                  label: AppFormLabels.amount,
-                  controller: amountController,
-                  validator: (value) => FormValidators.validateInteger(value),
-                  enabled: true,
-                  keyboardType: TextInputType.number,
-                  isRequired: true),
+                DecimalTextFormField(
+                    label: AppFormLabels.amount,
+                    controller: amountController,
+                    validator: (value) => FormValidators.validateDouble(value),
+                    enabled: true,
+                    isRequired: true),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 40),
 
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -205,6 +225,9 @@ class _BalanceForm extends ConsumerWidget {
                         icon: const Icon(Icons.add),
                         label: Text(AppButtons.inCash)
                     ),
+
+                    const SizedBox(width: 20),
+
                     FilledButton.tonalIcon(
                         onPressed: () => onSave('debit'),
                         icon: const Icon(Icons.remove),
@@ -289,7 +312,6 @@ class _BalanceForm extends ConsumerWidget {
         validator: (value) => value == null ? AppValidationMessages.currencySelection : null,
         onChanged: onChanged
     );  }
-
 
 }
 

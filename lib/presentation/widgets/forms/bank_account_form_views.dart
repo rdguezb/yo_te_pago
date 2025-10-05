@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,9 +8,12 @@ import 'package:yo_te_pago/business/config/constants/app_validation.dart';
 import 'package:yo_te_pago/business/config/constants/bottom_bar_items.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
+import 'package:yo_te_pago/business/domain/entities/account.dart';
+import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
+import 'package:yo_te_pago/business/providers/account_provider.dart';
 import 'package:yo_te_pago/business/providers/bank_account_provider.dart';
 import 'package:yo_te_pago/business/providers/delivery_provider.dart';
-import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
+import 'package:yo_te_pago/presentation/routes/app_router.dart';
 import 'package:yo_te_pago/presentation/widgets/input/dropdown_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 
@@ -30,8 +34,6 @@ class BankAccountFormView extends ConsumerStatefulWidget {
 class _BankAccountFormViewState extends ConsumerState<BankAccountFormView> {
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  final String goBackLocation = appBottomNavigationItems['bank']!.path;
-
   String? _selectedAccountId;
   String? _selectedDeliveryId;
 
@@ -39,16 +41,56 @@ class _BankAccountFormViewState extends ConsumerState<BankAccountFormView> {
   void initState() {
     super.initState();
 
-    Future.microtask(() {
-      ref.read(accountProvider.notifier).loadAllowedAccounts() ;
-      ref.read(deliveryProvider.notifier).loadDeliveries();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ref.read(bankAccountProvider).bankAccounts.isEmpty) {
+        ref.read(bankAccountProvider.notifier).loadBankAccounts();
+      }
+      if (ref.read(deliveryProvider).deliveries.isEmpty) {
+        ref.read(deliveryProvider.notifier).loadDeliveries();
+      }
     });
   }
 
+  @override
+  Widget build(BuildContext context) {
+    final bankAccountState = ref.watch(bankAccountProvider);
+    final deliveryState = ref.watch(deliveryProvider);
+
+    final goBackLocation = ref.read(appRouterProvider).namedLocation(appBottomNavigationItems['bank']!.path);
+
+    return Scaffold(
+        appBar: AppBar(
+            title: Text(AppTitles.bankAccountLink),
+            centerTitle: true,
+            leading: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                onPressed: () => context.canPop() ? context.pop() : context.go(goBackLocation)
+            )
+        ),
+        body: SafeArea(
+            child: (bankAccountState.isLoading || deliveryState.isLoading)
+                ? const Center(child: CircularProgressIndicator())
+                : _BankAccountForm(
+                formKey: _formKey,
+                onAccountChanged: (value) => setState(() => _selectedAccountId = value),
+                onDeliveryChanged: (value) => setState(() => _selectedDeliveryId = value),
+                selectedAccountId: _selectedAccountId,
+                selectedDeliveryId: _selectedDeliveryId,
+                onSave: _saveAccount
+            )
+        )
+    );
+  }
+
   Future<void> _saveAccount() async {
-    if (!(_formKey.currentState?.validate() ?? false)) {
+    if (!mounted) return;
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final router = GoRouter.of(context);
+
+    final form = _formKey.currentState;
+    if (form == null || !form.validate()) {
       showCustomSnackBar(
-          context: context,
+          scaffoldMessenger: scaffoldMessenger,
           message: AppRecordMessages.formHasErrors,
           type: SnackBarType.warning);
       return;
@@ -56,73 +98,53 @@ class _BankAccountFormViewState extends ConsumerState<BankAccountFormView> {
 
     if (_selectedAccountId == null || _selectedDeliveryId == null) {
       showCustomSnackBar(
-          context: context,
+          scaffoldMessenger: scaffoldMessenger,
           message: AppValidationMessages.selectionRequired,
           type: SnackBarType.warning);
       return;
     }
 
-    if (!mounted) return;
-
-    final odooService = ref.read(odooServiceProvider);
     try {
-      final accountId = ref.read(accountProvider).allowedAccounts.firstWhere(
+      final account = ref.read(bankAccountProvider).bankAccounts.firstWhereOrNull(
               (c) => c.id.toString() == _selectedAccountId);
-      final delivery = ref.read(deliveryProvider).deliveries.firstWhere(
+      final delivery = ref.read(deliveryProvider).deliveries.firstWhereOrNull(
               (c) => c.id.toString() == _selectedDeliveryId);
 
-      final account = accountId.copyWith(
+      if (account == null || delivery == null) {
+        showCustomSnackBar(
+            scaffoldMessenger: scaffoldMessenger,
+            message: 'La cuenta de banco o remesero seleccionado ya no son válidos.',
+            type: SnackBarType.error);
+        return;
+      }
+
+      final accountToSave = Account(
+          id: account.id,
+          name: account.name,
+          bankName: account.bankName,
           partnerId: delivery.id,
           partnerName: delivery.name
       );
 
-      await odooService.linkBankAccount(account);
+      await ref.read(accountProvider.notifier).linkAccount(accountToSave);
 
-      if (!mounted) return;
       showCustomSnackBar(
-        context: context,
-        message: AppRecordMessages.registerSuccess,
-        type: SnackBarType.success,
-      );
+          scaffoldMessenger: scaffoldMessenger,
+          message: AppRecordMessages.registerSuccess,
+          type: SnackBarType.success);
 
-      context.go(goBackLocation);
+      router.pop();
+    } on OdooException catch (e) {
+      showCustomSnackBar(
+          scaffoldMessenger: scaffoldMessenger,
+          message: e.message,
+          type: SnackBarType.error);
     } catch (e) {
-      if (!mounted) return;
       showCustomSnackBar(
-          context: context,
-          message: e.toString(),
+          scaffoldMessenger: scaffoldMessenger,
+          message: 'Ocurrió un error inesperado al asociar la cuenta bancaria.',
           type: SnackBarType.error);
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final accountState = ref.watch(accountProvider);
-    final deliveryState = ref.watch(deliveryProvider);
-
-    return Scaffold(
-        appBar: AppBar(
-            title: Text(AppTitles.bankAccountLink),
-            centerTitle: true,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded),
-              onPressed: () => context.canPop() ? context.pop() : context.go(goBackLocation)
-            )
-        ),
-        body: SafeArea(
-            child: (accountState.isLoading && accountState.allowedAccounts.isEmpty) ||
-                (deliveryState.isLoading && deliveryState.deliveries.isEmpty)
-                ? const Center(child: CircularProgressIndicator())
-                : _BankAccountForm(
-                    formKey: _formKey,
-                    onAccountChanged: (value) => setState(() => _selectedAccountId = value),
-                    onDeliveryChanged: (value) => setState(() => _selectedDeliveryId = value),
-                    selectedAccountId: _selectedAccountId,
-                    selectedDeliveryId: _selectedDeliveryId,
-                    onSave: _saveAccount
-                )
-        )
-    );
   }
 
 }
@@ -148,7 +170,7 @@ class _BankAccountForm extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = Theme.of(context).colorScheme;
-    final accountState = ref.watch(accountProvider);
+    final bankAccountState = ref.watch(bankAccountProvider);
     final deliveryState = ref.watch(deliveryProvider);
 
      return SingleChildScrollView(
@@ -171,9 +193,9 @@ class _BankAccountForm extends ConsumerWidget {
 
                   const SizedBox(height: 20),
 
-                  _buildAccountDropdown(context, ref, accountState, onAccountChanged, selectedAccountId),
+                  _buildAccountDropdown(context, ref, bankAccountState, onAccountChanged, selectedAccountId),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 40),
 
                   FilledButton.tonalIcon(
                       onPressed: onSave,
@@ -226,9 +248,9 @@ class _BankAccountForm extends ConsumerWidget {
   }
 
   Widget _buildAccountDropdown(BuildContext context, WidgetRef ref, BankAccountState state, ValueChanged<String?> onChanged, String? selectedId) {
-    assert(state.allowedAccounts.isNotEmpty || state.errorMessage != null || state.isLoading);
+    assert(state.bankAccounts.isNotEmpty || state.errorMessage != null || state.isLoading);
 
-    if (state.errorMessage != null && state.allowedAccounts.isEmpty) {
+    if (state.errorMessage != null && state.bankAccounts.isEmpty) {
       return Column(
           children: [
             Text(
@@ -239,7 +261,7 @@ class _BankAccountForm extends ConsumerWidget {
             const SizedBox(height: 10),
             ElevatedButton(
                 onPressed: () {
-                  ref.read(accountProvider.notifier).loadAllowedAccounts();
+                  ref.read(bankAccountProvider.notifier).loadBankAccounts();
                 },
                 child: const Text(AppButtons.retry)
             )
@@ -252,7 +274,7 @@ class _BankAccountForm extends ConsumerWidget {
         label: AppFormLabels.accountBank,
         isRequired: true,
         selectedId: selectedId,
-        items: state.allowedAccounts.map((account) => DropdownMenuItem<String>(
+        items: state.bankAccounts.map((account) => DropdownMenuItem<String>(
             value: '${account.id}',
             child: Text(
                 account.toString(),

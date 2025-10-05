@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,7 +8,6 @@ import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/providers/auth_notifier.dart';
 import 'package:yo_te_pago/business/providers/rate_provider.dart';
-import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/presentation/widgets/tiles/rate_tile.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 
@@ -24,32 +24,20 @@ class RatesView extends ConsumerStatefulWidget {
 class _RatesViewState extends ConsumerState<RatesView> {
 
   final TextEditingController _searchController = TextEditingController();
-
-  Future<void> _loadData() async {
-    try {
-      await ref.read(rateProvider.notifier).loadRates();
-    } catch (e) {
-      if (mounted) {
-        showCustomSnackBar(
-          context: context,
-          message: 'Error al cargar datos de las monedas',
-          type: SnackBarType.error,
-        );
-      }
-    }
-  }
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
 
     Future.microtask(() => _loadData());
-    _searchController.addListener(() => setState(() {}));
+    _searchController.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
-    _searchController.removeListener(() {});
+    _debounce?.cancel();
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
 
     super.dispose();
@@ -60,16 +48,13 @@ class _RatesViewState extends ConsumerState<RatesView> {
     final colors = Theme.of(context).colorScheme;
     final ratesState = ref.watch(rateProvider);
     final authState = ref.watch(authNotifierProvider);
-    final userRole = ref.read(odooSessionNotifierProvider).session?.role;
+    final userRole = authState.session?.role;
 
     if (!authState.isLoggedIn || ratesState.isLoading ) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final query = _searchController.text.toLowerCase();
-    final filteredRates = ratesState.rates.where((rate) {
-      return rate.partnerName!.toLowerCase().contains(query);
-    }).toList();
+    final filteredRates = ratesState.filteredRates;
 
     return Scaffold(
       appBar: AppBar(
@@ -111,6 +96,9 @@ class _RatesViewState extends ConsumerState<RatesView> {
                           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                           child: TextFormField(
                               controller: _searchController,
+                              onChanged: (query) {
+                                ref.read(rateProvider.notifier).setSearchQuery(query);
+                              },
                               decoration: InputDecoration(
                                   hintText: AppFormLabels.hintDeliverySearch,
                                   prefixIcon: const Icon(Icons.search),
@@ -132,7 +120,7 @@ class _RatesViewState extends ConsumerState<RatesView> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                              '${ratesState.errorMessage}',
+                              ratesState.errorMessage.toString(),
                               textAlign: TextAlign.center),
                           const SizedBox(height: 10),
                           ElevatedButton(
@@ -172,6 +160,30 @@ class _RatesViewState extends ConsumerState<RatesView> {
           )
       )
     );
+  }
+
+  void _onSearchChanged() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  Future<void> _loadData() async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(rateProvider.notifier).loadRates();
+    } catch (e) {
+      if (mounted) {
+        showCustomSnackBar(
+          scaffoldMessenger: scaffoldMessenger,
+          message: 'Error al cargar datos de las monedas',
+          type: SnackBarType.error,
+        );
+      }
+    }
   }
 
 }

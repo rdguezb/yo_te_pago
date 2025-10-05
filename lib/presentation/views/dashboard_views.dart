@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:yo_te_pago/business/config/constants/app_roles.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/providers/auth_notifier.dart';
-import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/business/providers/remittance_provider.dart';
 import 'package:yo_te_pago/presentation/widgets/tiles/remittance_tile.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
@@ -25,47 +25,20 @@ class DashboardView extends ConsumerStatefulWidget {
 class DashboardViewState extends ConsumerState<DashboardView> {
 
   final TextEditingController _searchController = TextEditingController();
-
-  Future<void> _loadData() async {
-    try {
-      await ref.read(remittanceProvider.notifier).loadRemittances();
-    } catch (e) {
-      if (mounted) {
-        showCustomSnackBar(
-          context: context,
-          message: 'Error al cargar datos del Dashboard',
-          type: SnackBarType.error,
-        );
-      }
-    }
-  }
-
-  Widget? _buildFloatingActionButton(String? role) {
-
-      if (role == ApiRole.delivery) {
-
-        return FloatingActionButton(
-            heroTag: 'addRemittance',
-            onPressed: () => context.go('/remittance/create'),
-            tooltip: 'Remesar',
-            child: const Icon(Icons.add)
-        );
-      }
-
-      return null;
-  }
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
 
     Future.microtask(() => _loadData());
-    _searchController.addListener(() => setState(() {}));
+    _searchController.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
-    _searchController.removeListener(() {});
+    _debounce?.cancel();
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
 
     super.dispose();
@@ -75,7 +48,7 @@ class DashboardViewState extends ConsumerState<DashboardView> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authNotifierProvider);
     final remittancesState = ref.watch(remittanceProvider);
-    final userRole = ref.read(odooSessionNotifierProvider).session?.role;
+    final userRole = authState.session?.role;
 
     if (!authState.isLoggedIn || remittancesState.isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -99,13 +72,16 @@ class DashboardViewState extends ConsumerState<DashboardView> {
         ),
       );
     }
-    final query = _searchController.text.toLowerCase();
-    final filteredRemittances = remittancesState.remittances.where((remittance) {
-      return remittance.customer.toLowerCase().contains(query);
-    }).toList();
+    final filteredRemittances = remittancesState.filteredRemittances;
 
     return Scaffold(
-        floatingActionButton: _buildFloatingActionButton(userRole),
+        floatingActionButton: userRole == ApiRole.delivery
+            ? FloatingActionButton(
+            heroTag: 'addRemittance',
+            onPressed: () => context.go('/remittance/create'),
+            tooltip: 'Remesar',
+            child: const Icon(Icons.add))
+        : null,
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         body: CustomScrollView(
           slivers: [
@@ -131,6 +107,9 @@ class DashboardViewState extends ConsumerState<DashboardView> {
                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                   child: TextFormField(
                       controller: _searchController,
+                      onChanged: (query) {
+                        ref.read(remittanceProvider.notifier).setSearchQuery(query);
+                      },
                       decoration: InputDecoration(
                           hintText: AppFormLabels.hintCustomerSearch,
                           prefixIcon: const Icon(Icons.search),
@@ -168,6 +147,30 @@ class DashboardViewState extends ConsumerState<DashboardView> {
           ]
         )
     );
+  }
+
+  void _onSearchChanged() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  Future<void> _loadData() async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(remittanceProvider.notifier).loadRemittances();
+    } catch (e) {
+      if (mounted) {
+        showCustomSnackBar(
+          scaffoldMessenger: scaffoldMessenger,
+          message: 'Error al cargar datos del Dashboard',
+          type: SnackBarType.error,
+        );
+      }
+    }
   }
 
 }

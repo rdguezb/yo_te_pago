@@ -11,7 +11,7 @@ class FormValidators {
     return null;
   }
 
-  static String? validateInteger(String? value, {String? errorMessage}) {
+  static String? validateDouble(String? value, {String? errorMessage}) {
     if (value == null || value.trim().isEmpty) {
       return errorMessage ?? AppValidationMessages.required;
     }

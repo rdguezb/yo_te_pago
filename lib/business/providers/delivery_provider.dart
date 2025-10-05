@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:yo_te_pago/business/config/constants/app_network_states.dart';
 import 'package:yo_te_pago/business/domain/entities/user.dart';
+import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/infrastructure/services/odoo_services.dart';
 
@@ -23,7 +25,7 @@ class DeliveryState {
     return DeliveryState(
       deliveries: deliveries ?? this.deliveries,
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: errorMessage
     );
   }
 }
@@ -35,48 +37,47 @@ class DeliveryNotifier extends StateNotifier<DeliveryState> {
 
   DeliveryNotifier(this._ref) : super(DeliveryState());
 
-  Future<void> loadDeliveries() async {
-    if (state.isLoading) {
-      return;
-    }
-
-    final OdooService? odooService = _ref.read(odooServiceProvider);
+  OdooService _getService() {
+    final odooService = _ref.read(odooServiceProvider);
     final odooSessionState = _ref.read(odooSessionNotifierProvider);
 
-    if (odooService == null || !odooSessionState.isAuthenticated) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: AppNetworkMessages.errorNoConection,
-      );
-      return;
+    if (!odooSessionState.isAuthenticated) {
+      throw OdooException(AppNetworkMessages.errorNoConection);
     }
+
+    return odooService;
+  }
+
+  Future<void> _fetchDeliveries() async {
     state = state.copyWith(
         isLoading: true,
         errorMessage: null);
-
     try {
-      final List<User> deliveries = await odooService.getDeliveries();
+      final odooService = _getService();
+      final deliveries = await odooService.getDeliveries();
       state = state.copyWith(
-        deliveries: deliveries,
-        isLoading: false,
-        errorMessage: null,
+          deliveries: deliveries,
+          isLoading: false,
+          errorMessage: null
       );
-    } catch (e) {
-      final errorMessage = e.toString().replaceFirst('Exception: ', '');
+    } on OdooException catch (e) {
       state = state.copyWith(
           isLoading: false,
-          errorMessage: errorMessage.isNotEmpty
-              ? errorMessage
-              : 'Error de red desconocido'
-      );
+          errorMessage: e.message);
+    } catch (e) {
+      state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'Ocurrió un error inesperado.');
     }
   }
 
-  Future<void> refreshRates() async {
-    state = state.copyWith(
-        isLoading: true,
-        errorMessage: null);
-    await loadDeliveries();
+  Future<void> loadDeliveries() async {
+    if (state.deliveries.isNotEmpty) return;
+    await _fetchDeliveries();
+  }
+
+  Future<void> refreshDeliveries() async {
+    await _fetchDeliveries();
   }
 
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,7 +8,6 @@ import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/providers/auth_notifier.dart';
 import 'package:yo_te_pago/business/providers/balance_provider.dart';
-import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/presentation/widgets/tiles/balance_tile.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 
@@ -25,32 +25,20 @@ class ReportView extends ConsumerStatefulWidget {
 class _ReportViewState extends ConsumerState<ReportView> {
 
   final TextEditingController _searchController = TextEditingController();
-
-  Future<void> _loadData() async {
-    try {
-      await ref.read(balanceProvider.notifier).loadBalances();
-    } catch (e) {
-      if (mounted) {
-        showCustomSnackBar(
-          context: context,
-          message: 'Error al cargar datos del Balance',
-          type: SnackBarType.error,
-        );
-      }
-    }
-  }
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
 
     Future.microtask(() => _loadData());
-    _searchController.addListener(() => setState(() {}));
+    _searchController.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
-    _searchController.removeListener(() {});
+    _debounce?.cancel();
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
 
     super.dispose();
@@ -61,16 +49,13 @@ class _ReportViewState extends ConsumerState<ReportView> {
     final colors = Theme.of(context).colorScheme;
     final authState = ref.watch(authNotifierProvider);
     final balancesState = ref.watch(balanceProvider);
-    final userRole = ref.read(odooSessionNotifierProvider).session?.role;
+    final userRole = authState.session?.role;
 
     if (!authState.isLoggedIn || balancesState.isLoading ) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final query = _searchController.text.toLowerCase();
-    final filteredBalances = balancesState.balances.where((balance) {
-      return balance.partnerName.toLowerCase().contains(query);
-    }).toList();
+    final filteredBalances = balancesState.filteredBalances;
 
     return Scaffold(
       appBar: AppBar(
@@ -115,7 +100,7 @@ class _ReportViewState extends ConsumerState<ReportView> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                  '${balancesState.errorMessage}',
+                                  balancesState.errorMessage.toString(),
                                   textAlign: TextAlign.center),
                               const SizedBox(height: 10),
                               ElevatedButton(
@@ -126,13 +111,16 @@ class _ReportViewState extends ConsumerState<ReportView> {
                           )
                         )
                     )
-                  else
+                  else ...[
                     if (userRole != ApiRole.delivery)
                       SliverToBoxAdapter(
                           child: Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                               child: TextFormField(
                                   controller: _searchController,
+                                  onChanged: (query) {
+                                    ref.read(balanceProvider.notifier).setSearchQuery(query);
+                                  },
                                   decoration: InputDecoration(
                                       hintText: AppFormLabels.hintCustomerSearch,
                                       prefixIcon: const Icon(Icons.search),
@@ -142,35 +130,65 @@ class _ReportViewState extends ConsumerState<ReportView> {
                               )
                           )
                       ),
-                  if (filteredBalances.isEmpty)
-                    SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: Center(
-                            child: Text(
-                                'No se encontraron saldos!',
-                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.red)
-                            )
-                        )
-                    )
-                  else
-                    SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                                (BuildContext context, int index) {
-                              final balance = filteredBalances[index];
 
-                              return BalanceTile(
-                                  role: userRole,
-                                  balance: balance
-                              );
-                            },
-                            childCount: filteredBalances.length
-                        )
-                    )
+                    const SliverPadding(
+                      padding: EdgeInsets.symmetric(vertical: 16.0)
+                    ),
+
+                    if (filteredBalances.isEmpty)
+                      SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Center(
+                              child: Text(
+                                  'No se encontraron saldos!',
+                                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.red)
+                              )
+                          )
+                      )
+                    else
+                      SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                                  (BuildContext context, int index) {
+                                final balance = filteredBalances[index];
+
+                                return BalanceTile(
+                                    role: userRole,
+                                    balance: balance
+                                );
+                              },
+                              childCount: filteredBalances.length
+                          )
+                      )
+                  ]
                 ]
             )
         )
       )
     );
+  }
+
+  void _onSearchChanged() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  Future<void> _loadData() async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(balanceProvider.notifier).loadBalances();
+    } catch (e) {
+      if (mounted) {
+        showCustomSnackBar(
+          scaffoldMessenger: scaffoldMessenger,
+          message: 'Error al cargar datos del Balance',
+          type: SnackBarType.error,
+        );
+      }
+    }
   }
 
 }

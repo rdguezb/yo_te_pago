@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:yo_te_pago/business/config/constants/app_auth_states.dart';
 import 'package:yo_te_pago/business/config/constants/odoo_endpoints.dart';
 import 'package:yo_te_pago/business/domain/entities/balance.dart';
+import 'package:yo_te_pago/business/domain/entities/account.dart';
 import 'package:yo_te_pago/business/domain/entities/bank_account.dart';
 import 'package:yo_te_pago/business/domain/entities/currency.dart';
 import 'package:yo_te_pago/business/domain/entities/rate.dart';
@@ -12,6 +13,7 @@ import 'package:yo_te_pago/business/domain/entities/remittance.dart';
 import 'package:yo_te_pago/business/domain/entities/user.dart';
 import 'package:yo_te_pago/business/domain/services/ibase_service.dart';
 import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
+import 'package:yo_te_pago/infrastructure/models/dtos/account_dto.dart';
 import 'package:yo_te_pago/infrastructure/models/dtos/bank_account_dto.dart';
 import 'package:yo_te_pago/infrastructure/models/dtos/currency_dto.dart';
 import 'package:yo_te_pago/infrastructure/models/dtos/user_dto.dart';
@@ -341,8 +343,8 @@ class OdooService extends IBaseService {
   }
 
   @override
-  Future<bool> deleteRemittance(Remittance remittance) async {
-    final String url = '${OdooEndpoints.remittanceBase}/${remittance.id}';
+  Future<bool> deleteRemittance(int id) async {
+    final String url = '${OdooEndpoints.remittanceBase}/$id';
 
     try {
       final dynamic response = await _sendJsonRequest(
@@ -356,10 +358,10 @@ class OdooService extends IBaseService {
         throw OdooException(serverMessage);
       }
     } on OdooException catch (e) {
-      print('OdooException while deleting remittance with ID ${remittance.id}: ${e.message}');
+      print('OdooException while deleting remittance with ID $id: ${e.message}');
       rethrow;
     } catch (e) {
-      print('Unexpected error while deleting remittance with ID ${remittance.id}: $e');
+      print('Unexpected error while deleting remittance with ID $id: $e');
       throw OdooException('An unexpected error occurred while deleting the remittance.');
     }
   }
@@ -487,8 +489,8 @@ class OdooService extends IBaseService {
   }
 
   @override
-  Future<bool> deleteRate(Rate rate) async {
-    final String url = '${OdooEndpoints.rateBase}/${rate.id}';
+  Future<bool> deleteRate(int id) async {
+    final String url = '${OdooEndpoints.rateBase}/$id';
 
     try {
       final dynamic response = await _sendJsonRequest(
@@ -502,10 +504,10 @@ class OdooService extends IBaseService {
         throw OdooException(serverMessage);
       }
     } on OdooException catch (e) {
-      print('OdooException while deleting rate with ID ${rate.id}: ${e.message}');
+      print('OdooException while deleting rate with ID $id: ${e.message}');
       rethrow;
     } catch (e) {
-      print('Unexpected error while deleting rate with ID ${rate.id}: $e');
+      print('Unexpected error while deleting rate with ID $id: $e');
       throw OdooException('An unexpected error occurred while deleting the rate.');
     }
   }
@@ -577,7 +579,7 @@ class OdooService extends IBaseService {
 // Bank Accounts
 
   @override
-  Future<List<BankAccount>> getBankAccounts() async {
+  Future<List<Account>> getAccounts() async {
     try {
       final dynamic response = await _sendJsonRequest(
           'GET',
@@ -585,12 +587,12 @@ class OdooService extends IBaseService {
 
       final dynamic data = response['data'];
 
-      List<BankAccountDto> accountDto;
+      List<AccountDto> accountDto;
       if (data is Map<String, dynamic>) {
-        accountDto = [BankAccountDto.fromJson(data)];
+        accountDto = [AccountDto.fromJson(data)];
       } else if (data is List) {
         accountDto = data
-            .map((jsonItem) => BankAccountDto.fromJson(jsonItem as Map<String, dynamic>))
+            .map((jsonItem) => AccountDto.fromJson(jsonItem as Map<String, dynamic>))
             .toList();
       } else {
         accountDto = [];
@@ -613,7 +615,7 @@ class OdooService extends IBaseService {
   }
 
   @override
-  Future<bool> deleteBankAccount(BankAccount account) async {
+  Future<bool> deleteAccount(Account account) async {
     final String url = '${OdooEndpoints.bankAccountBase}/${account.partnerId}';
     final body = {
       'bank_id': account.id,
@@ -642,7 +644,7 @@ class OdooService extends IBaseService {
   }
 
   @override
-  Future<bool> linkBankAccount(BankAccount account) async {
+  Future<bool> linkAccount(Account account) async {
     final String url = '${OdooEndpoints.bankAccountBase}/${account.partnerId}';
     final body = {
       'bank_id': account.id,
@@ -671,7 +673,7 @@ class OdooService extends IBaseService {
   }
 
   @override
-  Future<List<BankAccount>> getAllowedBankAccounts() async {
+  Future<List<BankAccount>> getBankAccounts() async {
     try {
       final dynamic response = await _sendJsonRequest(
           'GET',

@@ -5,63 +5,81 @@ import 'package:yo_te_pago/business/domain/repositories/iappdata_repository.dart
 import 'package:yo_te_pago/infrastructure/repositories/appdata_repository.dart';
 
 
-typedef AppDataCallback = Future<List<AppData>> Function();
+class AppDataState {
+  final List<AppData> appDatas;
+  final bool isLoading;
+  final String? errorMessage;
+
+  AppDataState({
+    this.appDatas = const [],
+    this.isLoading = false,
+    this.errorMessage,
+  });
+
+  AppDataState copyWith({
+    List<AppData>? appDatas,
+    bool? isLoading,
+    String? errorMessage,
+  }) {
+    return AppDataState(
+      appDatas: appDatas ?? this.appDatas,
+      isLoading: isLoading ?? this.isLoading,
+      errorMessage: errorMessage,
+    );
+  }
+}
 
 
-class AppDataNotifier extends StateNotifier<List<AppData>> {
+class AppDataNotifier extends StateNotifier<AppDataState> {
 
-  bool isLoading = false;
-  AppDataCallback fetchAllAppDatas;
-  final IAppDataRepository appDataRepository;
+  final IAppDataRepository _appDataRepository;
 
-  AppDataNotifier({
-    required this.fetchAllAppDatas,
-    required this.appDataRepository
-  }) : super( [] );
+  AppDataNotifier({required IAppDataRepository appDataRepository})
+      : _appDataRepository = appDataRepository,
+        super(AppDataState());
 
   Future<void> loadAppDatas() async {
-    if (isLoading) {
-      return;
-    }
-    isLoading = true;
+    if (state.isLoading) return;
+
+    state = state.copyWith(
+        isLoading: true,
+        errorMessage: null);
+
     try {
-      final result = await fetchAllAppDatas();
-      state = result;
-    } catch (e, st) {
-      throw Exception('Error al cargar AppDatas');
-    } finally {
-      isLoading = false;
+      final result = await _appDataRepository.getAll();
+      state = state.copyWith(
+          appDatas: result,
+          isLoading: false);
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: 'Error al cargar AppDatas: $e',
+      );
     }
   }
 
   Future<AppData?> getAppDataByKey(String key) async {
-    if (isLoading) {
+    try {
+      return await _appDataRepository.getByKey(key);
+    } catch (e) {
+      print('Error al obtener AppData por clave: $e');
       return null;
     }
-    isLoading = true;
-    AppData? result;
-    try {
-      result = await appDataRepository.getByKey(key);
-    } catch (e, st) {
-      throw Exception('Error al obtener AppData por clave');
-    } finally {
-      isLoading = false;
-    }
-
-    return result;
+  }
+  
+  Future<void> saveAppData(String key, String value, String valueType) async {
+    final appData = AppData(
+        keyName: key,
+        valueStr: value,
+        valueType: valueType);
+    await _appDataRepository.add(appData);
   }
 
 }
 
 
-final appDataProvider = StateNotifierProvider<AppDataNotifier, List<AppData>>((ref) {
-
+final appDataProvider = StateNotifierProvider<AppDataNotifier, AppDataState>((ref) {
   final appDataRepository = ref.watch(appDataRepositoryProvider);
-  final fetchAllAppDatas = appDataRepository.getAll;
-  final notifier = AppDataNotifier(
-    fetchAllAppDatas: fetchAllAppDatas,
-    appDataRepository: appDataRepository
-  );
-
-  return notifier;
+  
+  return AppDataNotifier(appDataRepository: appDataRepository);
 });
