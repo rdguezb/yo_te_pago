@@ -14,8 +14,8 @@ class BankAccount {
 
     return BankAccount(
         id: (json['id'] as int?) ?? 0,
-        name: json['acc_number'],
-        bankName: json['bank_name']
+        name: json['acc_number'] as String,
+        bankName: json['bank_name'] as String
     );
   }
 

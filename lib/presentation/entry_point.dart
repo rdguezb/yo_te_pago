@@ -1,38 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:yo_te_pago/business/providers/appdata_provider.dart';
+import 'package:yo_te_pago/business/providers/auth_notifier.dart';
 import 'package:yo_te_pago/presentation/routes/app_router.dart';
+import 'package:yo_te_pago/presentation/screens/loading_screen.dart';
 import 'package:yo_te_pago/presentation/theme/app_theme.dart';
 
+class EntryPoint extends ConsumerWidget {
 
-class MainApp extends ConsumerStatefulWidget {
+  const EntryPoint({super.key});
 
-  const MainApp({super.key});
+    @override
+  Widget build(BuildContext context, WidgetRef ref) {
 
-  @override
-  ConsumerState<MainApp> createState() => _MainAppState();
+      final bool isInitialized = ref.watch(authNotifierProvider.select((state) => state.isInitialized));
 
-}
+      if (!isInitialized) {
 
-class _MainAppState extends ConsumerState<MainApp> {
+        return const MaterialApp(
+          debugShowCheckedModeBanner: false,
+          home: LoadingScreen()
+        );
+      }
 
-  @override
-  void initState() {
-    super.initState();
+      final goRouter = ref.watch(appRouterProvider);
 
-    ref.read(appDataProvider.notifier).loadAppDatas();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final goRouter = ref.watch(appRouterProvider);
-
-    return MaterialApp.router(
-      routerConfig: goRouter,
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-    );
+      return MaterialApp.router(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        routerConfig: goRouter
+      );
   }
 
 }

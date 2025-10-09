@@ -164,6 +164,7 @@ class OdooService extends IBaseService {
             break;
           }
         }
+
         if (result != null) {
           _authResult = OdooAuth.fromJson(result, sessionId: sessionId);
 
@@ -711,7 +712,7 @@ class OdooService extends IBaseService {
     try {
       final dynamic response = await _sendJsonRequest(
           'GET',
-          OdooEndpoints.userDeliveries);
+          OdooEndpoints.usersDeliveries);
 
       final dynamic data = response['data'];
 
@@ -739,15 +740,63 @@ class OdooService extends IBaseService {
   }
 
   @override
-  Future<bool> editPartner(String name) {
-    // TODO: implement editPartner
-    throw UnimplementedError();
+  Future<List<User>> getUsers() async {
+    try {
+      final dynamic response = await _sendJsonRequest(
+          'GET',
+          OdooEndpoints.usersBase);
+
+      final dynamic data = response['data'];
+
+      List<UserDto> userDto;
+      if (data is Map<String, dynamic>) {
+        userDto = [UserDto.fromJson(data)];
+      } else if (data is List) {
+        userDto = data
+            .map((jsonItem) => UserDto.fromJson(jsonItem as Map<String, dynamic>))
+            .toList();
+      } else {
+        userDto = [];
+      }
+
+      return userDto
+          .map((dto) => dto.toModel())
+          .toList();
+    } on OdooException catch (e) {
+      print('Error de Odoo al obtener usuarios: ${e.message}');
+      rethrow;
+    } catch (e) {
+      print('Error inesperado al obtener usuarios: $e');
+      throw OdooException('Ocurrió un error inesperado al procesar los usuarios.');
+    }
   }
 
   @override
-  Future<bool> editUser(String login) {
-    // TODO: implement editUser
-    throw UnimplementedError();
+  Future<bool> editMyAccount(User user) async {
+    final String url = '${OdooEndpoints.profile}/${user.id}';
+    Map<String, dynamic> dataMap = user.toMap();
+
+
+    try {
+      final response = await _sendJsonRequest(
+          'PUT',
+          url,
+          bodyParams: dataMap);
+
+      if (response != null && response['success'] == true) {
+        return true;
+      } else {
+        final serverMessage = response?['message'] ?? 'No success flag in response.';
+        throw OdooException(serverMessage);
+      }
+    } on OdooException catch (e) {
+      print('Error de Odoo al actualizar los datos de la cuenta: ${e.message}');
+      rethrow;
+    } catch (e) {
+      print('Error inesperado al actualizar los datos de la cuenta: $e');
+      throw OdooException('An unexpected error occurred while updating the account preferences.');
+    }
+
   }
 
 }

@@ -4,15 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:yo_te_pago/business/config/constants/app_record_messages.dart';
+import 'package:yo_te_pago/business/config/constants/app_routes.dart';
 import 'package:yo_te_pago/business/config/constants/app_validation.dart';
-import 'package:yo_te_pago/business/config/constants/bottom_bar_items.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/domain/entities/account.dart';
 import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
-import 'package:yo_te_pago/business/providers/account_provider.dart';
-import 'package:yo_te_pago/business/providers/bank_account_provider.dart';
-import 'package:yo_te_pago/business/providers/delivery_provider.dart';
+import 'package:yo_te_pago/business/providers/accounts_provider.dart';
+import 'package:yo_te_pago/business/providers/bank_accounts_provider.dart';
+import 'package:yo_te_pago/business/providers/deliveries_provider.dart';
 import 'package:yo_te_pago/presentation/routes/app_router.dart';
 import 'package:yo_te_pago/presentation/widgets/input/dropdown_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
@@ -20,7 +20,7 @@ import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 
 class BankAccountFormView extends ConsumerStatefulWidget {
 
-  static const name = 'bank-account-form-views';
+  static const name = 'account';
 
   const BankAccountFormView({
     super.key
@@ -56,7 +56,7 @@ class _BankAccountFormViewState extends ConsumerState<BankAccountFormView> {
     final bankAccountState = ref.watch(bankAccountProvider);
     final deliveryState = ref.watch(deliveryProvider);
 
-    final goBackLocation = ref.read(appRouterProvider).namedLocation(appBottomNavigationItems['bank']!.path);
+    final goBackLocation = ref.read(appRouterProvider).namedLocation(AppRoutes.home, pathParameters: {'page': '3'});
 
     return Scaffold(
         appBar: AppBar(
@@ -85,7 +85,7 @@ class _BankAccountFormViewState extends ConsumerState<BankAccountFormView> {
   Future<void> _saveAccount() async {
     if (!mounted) return;
     final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final router = GoRouter.of(context);
+    final goBackLocation = ref.read(appRouterProvider).namedLocation(AppRoutes.home, pathParameters: {'page': '3'});
 
     final form = _formKey.currentState;
     if (form == null || !form.validate()) {
@@ -132,14 +132,19 @@ class _BankAccountFormViewState extends ConsumerState<BankAccountFormView> {
           scaffoldMessenger: scaffoldMessenger,
           message: AppRecordMessages.registerSuccess,
           type: SnackBarType.success);
-
-      router.pop();
+      
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go(goBackLocation);
+      }
     } on OdooException catch (e) {
       showCustomSnackBar(
           scaffoldMessenger: scaffoldMessenger,
           message: e.message,
           type: SnackBarType.error);
     } catch (e) {
+      print('Error: $e');
       showCustomSnackBar(
           scaffoldMessenger: scaffoldMessenger,
           message: 'Ocurrió un error inesperado al asociar la cuenta bancaria.',
@@ -210,9 +215,7 @@ class _BankAccountForm extends ConsumerWidget {
   }
 
   Widget _buildDeliveryDropdown(BuildContext context, WidgetRef ref, DeliveryState state, ValueChanged<String?> onChanged, String? selectedId) {
-    assert(state.deliveries.isNotEmpty || state.errorMessage != null || state.isLoading);
-
-    if (state.errorMessage != null && state.deliveries.isEmpty) {
+    if (state.errorMessage != null) {
       return Column(
           children: [
             Text(
@@ -228,6 +231,15 @@ class _BankAccountForm extends ConsumerWidget {
                 child: const Text(AppButtons.retry)
             )
           ]
+      );
+    }
+
+    if (state.deliveries.isEmpty && !state.isLoading) {
+      return const Center(
+        child: Text(
+          'No hay remeseros disponibles.',
+          textAlign: TextAlign.center,
+        ),
       );
     }
 
@@ -248,9 +260,7 @@ class _BankAccountForm extends ConsumerWidget {
   }
 
   Widget _buildAccountDropdown(BuildContext context, WidgetRef ref, BankAccountState state, ValueChanged<String?> onChanged, String? selectedId) {
-    assert(state.bankAccounts.isNotEmpty || state.errorMessage != null || state.isLoading);
-
-    if (state.errorMessage != null && state.bankAccounts.isEmpty) {
+    if (state.errorMessage != null) {
       return Column(
           children: [
             Text(
@@ -266,6 +276,15 @@ class _BankAccountForm extends ConsumerWidget {
                 child: const Text(AppButtons.retry)
             )
           ]
+      );
+    }
+
+    if (state.bankAccounts.isEmpty && !state.isLoading) {
+      return const Center(
+        child: Text(
+          'No hay cuentas bancarias sin vincular.',
+          textAlign: TextAlign.center,
+        ),
       );
     }
 

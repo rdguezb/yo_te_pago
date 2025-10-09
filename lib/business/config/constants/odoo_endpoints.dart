@@ -8,7 +8,9 @@ abstract class OdooEndpoints {
   static const String getCurrencies = '/api/currencies';
   static const String balanceBase = '/api/balance';
   static const String bankAccountBase = '/api/account';
-  static const String userDeliveries = '/api/delivery';
+  static const String usersDeliveries = '/api/deliveries';
+  static const String usersBase = '/api/users';
+  static const String profile = '/api/profile';
   static const String bankAccountAllowBase = '/api/bank_account';
 
   // static const String getBalances = '/api/v1/balance/total';

@@ -26,7 +26,7 @@ final List<SettingOptions> settingOptions = [
     icon: Icons.perm_identity_rounded,
     allowedRoles: const [ApiRole.delivery, ApiRole.user, ApiRole.manager],
     subtitle: 'Cambiar los datos de mi cuenta, mi nombre, etc.',
-    path: '/setting/account'
+    path: '/setting/profile'
   ),
   SettingOptions(
       title: 'Clave de Acceso',

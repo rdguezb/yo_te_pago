@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'package:yo_te_pago/business/config/constants/configs.dart';
-import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
+import 'package:yo_te_pago/business/providers/auth_notifier.dart';
 
 
 final packageInfoProvider = FutureProvider<PackageInfo>((ref) async {
@@ -17,8 +17,8 @@ class CustomAppBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final styles = Theme.of(context).textTheme;
-    final odooService = ref.watch(odooServiceProvider);
-    final String userName = odooService.partnerName;
+    final authState = ref.watch(authNotifierProvider);
+    final userName = authState.session?.partnerName ?? 'Invitado';
     final packageInfoAsync = ref.watch(packageInfoProvider);
 
     return Padding(

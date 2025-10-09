@@ -136,7 +136,11 @@ class AccountNotifier extends StateNotifier<AccountState> {
       success = await odooService.linkAccount(account);
 
       if (success) {
-        await _fetchAccounts();
+        final updatedAccounts = List<Account>.from(state.accounts)..add(account);
+        state = state.copyWith(
+          accounts: updatedAccounts,
+          isLoading: false
+        );
       } else {
         state = state.copyWith(
             isLoading: false,

@@ -18,10 +18,10 @@ class Account {
 
     return Account(
         id: (json['id'] as int?) ?? 0,
-        name: json['acc_number'],
-        bankName: json['bank_name'],
+        name: json['acc_number'] as String,
+        bankName: json['bank_name'] as String,
         partnerId: (json['partner_id'] as int?) ?? 0,
-        partnerName: json['partner_name']
+        partnerName: json['partner_name'] as String
     );
   }
 

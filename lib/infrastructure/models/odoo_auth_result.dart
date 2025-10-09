@@ -12,6 +12,7 @@ class OdooAuth {
   final String? serverURL;
   final String? databaseName;
   final String? role;
+  final String? email;
 
   OdooAuth({
     required this.userId,
@@ -23,6 +24,7 @@ class OdooAuth {
     required this.role,
     this.serverURL,
     this.databaseName,
+    this.email,
     this.sessionId
   });
 
@@ -46,7 +48,8 @@ class OdooAuth {
       userName: json['username'] as String,
       partnerId: json['partner_id'] as int,
       partnerName: json['name'] as String,
-      role: json['role'] as String,
+      role: (json['role'] as String?) ?? '',
+      email: (json['email'] as String?) ?? '',
       companyId: id,
       allowedCompanies: companies,
       sessionId: sessionId
@@ -57,6 +60,7 @@ class OdooAuth {
     String? userName,
     String? partnerName,
     int? companyId,
+    String? email,
     List<Company>? allowedCompanies
   }) {
 
@@ -68,10 +72,10 @@ class OdooAuth {
       companyId: companyId ?? this.companyId,
       allowedCompanies: allowedCompanies ?? this.allowedCompanies,
       role: role,
+      email: email ?? this.email,
       sessionId: sessionId,
       serverURL: serverURL,
       databaseName: databaseName
-
     );
   }
 

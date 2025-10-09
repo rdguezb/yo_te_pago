@@ -10,7 +10,7 @@ import 'package:yo_te_pago/presentation/widgets/shared/bottom_bar_widget.dart';
 
 class HomeScreen extends StatefulWidget {
 
-  static const name = 'home-screen';
+  static const name = 'home';
   final int pageIndex;
 
   const HomeScreen({

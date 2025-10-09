@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:yo_te_pago/business/config/constants/api_const.dart';
 import 'package:yo_te_pago/business/config/constants/app_auth_states.dart';
+import 'package:yo_te_pago/business/domain/entities/app_data.dart';
+import 'package:yo_te_pago/business/domain/entities/user.dart';
 import 'package:yo_te_pago/business/domain/repositories/iappdata_repository.dart';
 import 'package:yo_te_pago/infrastructure/models/odoo_auth_result.dart';
 import 'package:yo_te_pago/infrastructure/repositories/appdata_repository.dart';
@@ -127,6 +129,40 @@ class OdooSessionNotifier extends StateNotifier<OdooSessionState> {
         isLoading: false,
         isAuthenticated: false,
         session: null);
+  }
+
+  Future<void> updateLocalSession(User user) async {
+    if (state.session == null) return;
+
+    if (user.name == state.session!.partnerName &&
+        user.login == state.session!.userName &&
+        user.email == state.session!.email) {
+      return;
+    }
+
+    final newSession = state.session!.copyWith(
+      partnerName: user.name,
+      userName: user.login,
+      email: user.email
+    );
+
+    try {
+      final userToSave = AppData(
+        keyName: ApiConfig.keyUser,
+        valueStr: user.login,
+        valueType: 'string');
+
+      await _appDataRepository.edit(userToSave);
+
+      state = state.copyWith(
+        session: newSession,
+        isLoading: false,
+        errorMessage: null);
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: 'Error al guardar la sesión local: $e');
+    }
   }
 
   @override

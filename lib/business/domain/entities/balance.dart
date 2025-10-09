@@ -28,14 +28,14 @@ class Balance {
 
     return Balance(
         currencyId: (json['currency_id'] as int?) ?? 0,
-        name: json['name'],
-        fullName: json['fullName'],
-        symbol: json['symbol'],
+        name: json['name'] as String,
+        fullName: json['fullName'] as String,
+        symbol: json['symbol'] as String,
         partnerId: (json['partner_id'] as int?) ?? 0,
-        partnerName: json['partner_name'],
-        debit: json['debit'],
-        credit: json['credit'],
-        balance: json['balance']
+        partnerName: json['partner_name'] as String,
+        debit: json['debit'] as double,
+        credit: json['credit'] as double,
+        balance: json['balance'] as double
     );
   }
 

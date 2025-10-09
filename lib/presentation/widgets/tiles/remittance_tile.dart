@@ -7,7 +7,7 @@ import 'package:yo_te_pago/business/config/constants/app_roles.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/domain/entities/remittance.dart';
-import 'package:yo_te_pago/business/providers/remittance_provider.dart';
+import 'package:yo_te_pago/business/providers/remittances_provider.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/confirm_modal_dialog.dart';
 

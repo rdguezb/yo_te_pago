@@ -4,15 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:yo_te_pago/business/config/constants/app_record_messages.dart';
+import 'package:yo_te_pago/business/config/constants/app_routes.dart';
 import 'package:yo_te_pago/business/config/constants/app_validation.dart';
-import 'package:yo_te_pago/business/config/constants/bottom_bar_items.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/helpers/form_fields_validators.dart';
 import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
-import 'package:yo_te_pago/business/providers/balance_provider.dart';
-import 'package:yo_te_pago/business/providers/currency_provider.dart';
-import 'package:yo_te_pago/business/providers/delivery_provider.dart';
+import 'package:yo_te_pago/business/providers/balances_provider.dart';
+import 'package:yo_te_pago/business/providers/currencies_provider.dart';
+import 'package:yo_te_pago/business/providers/deliveries_provider.dart';
 import 'package:yo_te_pago/presentation/routes/app_router.dart';
 import 'package:yo_te_pago/presentation/widgets/input/decimal_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/input/dropdown_form_fields.dart';
@@ -20,7 +20,7 @@ import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 
 class BalanceFormView extends ConsumerStatefulWidget {
 
-  static const name = 'balance-form-views';
+  static const name = 'balance';
 
   const BalanceFormView({
     super.key
@@ -66,7 +66,7 @@ class _BalanceFormViewState extends ConsumerState<BalanceFormView> {
     final currencyState = ref.watch(currencyProvider);
     final deliveryState = ref.watch(deliveryProvider);
 
-    final goBackLocation = ref.read(appRouterProvider).namedLocation(appBottomNavigationItems['balance']!.path);
+    final goBackLocation = ref.read(appRouterProvider).namedLocation(AppRoutes.home, pathParameters: {'page': '1'});
 
     return Scaffold(
         appBar: AppBar(
@@ -96,7 +96,7 @@ class _BalanceFormViewState extends ConsumerState<BalanceFormView> {
   Future<void> _updateBalance(String action) async {
     if (!mounted) return;
     final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final router = GoRouter.of(context);
+    final goBackLocation = ref.read(appRouterProvider).namedLocation(AppRoutes.home, pathParameters: {'page': '1'});
 
     final form = _formKey.currentState;
     if (form == null || !form.validate()) {
@@ -142,7 +142,11 @@ class _BalanceFormViewState extends ConsumerState<BalanceFormView> {
           message: AppRecordMessages.balanceUpdateSuccess,
           type: SnackBarType.success);
 
-      router.pop();
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go(goBackLocation);
+      }
     } on OdooException catch (e) {
       showCustomSnackBar(
           scaffoldMessenger: scaffoldMessenger,

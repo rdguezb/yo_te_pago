@@ -27,4 +27,16 @@ class FormValidators {
     return null;
   }
 
+  static String? validateEmail(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return AppValidationMessages.required;
+    }
+    final emailRegExp = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegExp.hasMatch(value)) {
+      return AppValidationMessages.invalidEmail;
+    }
+
+    return null;
+  }
+
 }

@@ -5,7 +5,7 @@ import 'package:yo_te_pago/business/config/constants/app_general_states.dart';
 
 class LoadingScreen extends StatelessWidget {
 
-  static const name = 'loading-screen';
+  static const name = 'loading';
 
   const LoadingScreen({super.key});
 

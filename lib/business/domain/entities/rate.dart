@@ -25,12 +25,12 @@ class Rate {
     return Rate(
       id: (json['id'] as int?) ?? 0,
       currencyId: (json['currency_id'] as int?) ?? 0,
-      fullName: json['fullName'],
-      name: json['name'],
-      symbol: json['symbol'],
+      fullName: json['fullName'] as String,
+      name: json['name'] as String,
+      symbol: json['symbol'] as String,
       rate: (json['rate'] as num?)?.toDouble() ?? 0.0,
       partnerId: (json['partner_id'] as int?) ?? 0,
-      partnerName: json['partner_name']
+      partnerName: json['partner_name'] as String
     );
   }
 

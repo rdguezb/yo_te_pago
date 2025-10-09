@@ -32,7 +32,6 @@ abstract class IBaseService {
 
 
   Future<List<User>> getDeliveries();
-  Future<bool> editUser(String login);
-  Future<bool> editPartner(String name);
+  Future<bool> editMyAccount(User user);
 
 }

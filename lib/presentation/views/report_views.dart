@@ -7,7 +7,7 @@ import 'package:yo_te_pago/business/config/constants/app_roles.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/providers/auth_notifier.dart';
-import 'package:yo_te_pago/business/providers/balance_provider.dart';
+import 'package:yo_te_pago/business/providers/balances_provider.dart';
 import 'package:yo_te_pago/presentation/widgets/tiles/balance_tile.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 

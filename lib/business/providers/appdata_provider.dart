@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:yo_te_pago/business/domain/entities/app_data.dart';
@@ -36,7 +37,9 @@ class AppDataNotifier extends StateNotifier<AppDataState> {
 
   AppDataNotifier({required IAppDataRepository appDataRepository})
       : _appDataRepository = appDataRepository,
-        super(AppDataState());
+        super(AppDataState()) {
+    loadAppDatas();
+  }
 
   Future<void> loadAppDatas() async {
     if (state.isLoading) return;
@@ -58,21 +61,57 @@ class AppDataNotifier extends StateNotifier<AppDataState> {
     }
   }
 
-  Future<AppData?> getAppDataByKey(String key) async {
+  AppData? getAppDataByKey(String key) {
     try {
-      return await _appDataRepository.getByKey(key);
+      return state.appDatas.firstWhereOrNull((data) => data.keyName == key);
     } catch (e) {
-      print('Error al obtener AppData por clave: $e');
       return null;
     }
   }
-  
-  Future<void> saveAppData(String key, String value, String valueType) async {
-    final appData = AppData(
-        keyName: key,
-        valueStr: value,
-        valueType: valueType);
-    await _appDataRepository.add(appData);
+
+  Future<void> addAppData(AppData appData) async {
+    state = state.copyWith(isLoading: true);
+    try {
+      final newData = await _appDataRepository.add(appData);
+
+      if (newData != null) {
+        final newList = [...state.appDatas, newData];
+        state = state.copyWith(
+            appDatas: newList,
+            isLoading: false,
+            errorMessage: null);
+      } else {
+        state = state.copyWith(
+            isLoading: false,
+            errorMessage: 'El repositorio no devolvió el objeto creado.');
+      }
+    } catch (e) {
+      state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'Error al añadir AppData: $e');
+    }
+  }
+
+  Future<void> editAppData(AppData appData) async {
+    state = state.copyWith(isLoading: true);
+    try {
+      await _appDataRepository.edit(appData);
+
+      final index = state.appDatas.indexWhere((d) => d.id == appData.id);
+      if (index != -1) {
+        final newList = List<AppData>.from(state.appDatas);
+        newList[index] = appData;
+        state = state.copyWith(appDatas: newList, isLoading: false, errorMessage: null);
+      } else {
+        state = state.copyWith(
+            isLoading: false,
+            errorMessage: 'Intentando editar un AppData que no existe en el estado.');
+      }
+    } catch (e) {
+      state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'Error al editar AppData: $e');
+    }
   }
 
 }

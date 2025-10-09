@@ -13,7 +13,7 @@ import 'package:yo_te_pago/presentation/widgets/input/custom_text_form_fields.da
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 
 class RegisterScreen extends StatelessWidget {
-  static const name = 'register-screen';
+  static const name = 'register';
 
   const RegisterScreen({super.key});
 
@@ -56,16 +56,18 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
     }
     
     final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final login = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
 
     try {
       final repository = ref.read(appDataRepositoryProvider);
       await repository.add(AppData(
           keyName: ApiConfig.keyUser,
-          valueStr: _usernameController.text.trim(),
+          valueStr: login,
           valueType: 'string'));
       await repository.add(AppData(
           keyName: ApiConfig.keyPass,
-          valueStr: _passwordController.text.trim(),
+          valueStr: password,
           valueType: 'string'));
 
       showCustomSnackBar(
@@ -93,26 +95,37 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
     return Form(
         key: _formKey,
         child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(Icons.person_outline_sharp, size: 60),
-              const SizedBox(height: 30),
+              Icon(
+                  Icons.person_outline_sharp,
+                  color: colors.primary,
+                  size: 80),
+
+              const SizedBox(height: 40),
+
               CustomTextFormField(
                   label: AppFormLabels.username,
                   controller: _usernameController,
                   isRequired: true,
                   validator: (value) => FormValidators.validateRequired(value)),
+
               const SizedBox(height: 20),
+
               CustomTextFormField(
                   label: AppFormLabels.password,
                   controller: _passwordController,
                   isRequired: true,
                   isObscure: true,
                   validator: (value) => FormValidators.validateRequired(value)),
-              const SizedBox(height: 20),
+
+              const SizedBox(height: 40),
+
               FilledButton.tonalIcon(
                 onPressed: _handleRegister,
                 icon: const Icon(Icons.how_to_reg_outlined),

@@ -4,17 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:yo_te_pago/business/config/constants/app_record_messages.dart';
+import 'package:yo_te_pago/business/config/constants/app_routes.dart';
 import 'package:yo_te_pago/business/config/constants/app_validation.dart';
-import 'package:yo_te_pago/business/config/constants/bottom_bar_items.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/helpers/form_fields_validators.dart';
 import 'package:yo_te_pago/business/config/helpers/human_formats.dart';
 import 'package:yo_te_pago/business/domain/entities/remittance.dart';
 import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
-import 'package:yo_te_pago/business/providers/account_provider.dart';
-import 'package:yo_te_pago/business/providers/rate_provider.dart';
-import 'package:yo_te_pago/business/providers/remittance_provider.dart';
+import 'package:yo_te_pago/business/providers/accounts_provider.dart';
+import 'package:yo_te_pago/business/providers/rates_provider.dart';
+import 'package:yo_te_pago/business/providers/remittances_provider.dart';
 import 'package:yo_te_pago/presentation/routes/app_router.dart';
 import 'package:yo_te_pago/presentation/widgets/input/custom_text_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/input/date_form_fields.dart';
@@ -26,7 +26,7 @@ import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 
 class RemittanceFormView extends ConsumerStatefulWidget {
 
-  static const name = 'remittance-form-views';
+  static const name = 'remittance';
   final int? id;
 
   const RemittanceFormView({
@@ -89,7 +89,7 @@ class _RemittanceFormViewState extends ConsumerState<RemittanceFormView> {
         ? AppTitles.remittanceEdit
         : AppTitles.remittanceCreate;
 
-    final goBackLocation = ref.read(appRouterProvider).namedLocation(appBottomNavigationItems['home']!.path);
+    final goBackLocation = ref.read(appRouterProvider).namedLocation(AppRoutes.home, pathParameters: {'page': '0'});
 
     return Scaffold(
       appBar: AppBar(
@@ -124,7 +124,7 @@ class _RemittanceFormViewState extends ConsumerState<RemittanceFormView> {
   void _initializeFormData() {
     if (!mounted) return;
     final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final router = GoRouter.of(context);
+    final goBackLocation = ref.read(appRouterProvider).namedLocation(AppRoutes.home, pathParameters: {'page': '0'});
 
     if (widget.id != null) {
       final remittance = ref.read(remittanceProvider).remittances.firstWhereOrNull(
@@ -147,7 +147,12 @@ class _RemittanceFormViewState extends ConsumerState<RemittanceFormView> {
             scaffoldMessenger: scaffoldMessenger,
             message: 'Error: No se encontró la remesa seleccionada.',
             type: SnackBarType.error);
-        if (mounted) router.pop();
+
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go(goBackLocation);
+        }
       }
     } else {
       final now = DateTime.now();
@@ -159,7 +164,7 @@ class _RemittanceFormViewState extends ConsumerState<RemittanceFormView> {
   Future<void> _saveRemittance() async {
     if (!mounted) return;
     final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final router = GoRouter.of(context);
+    final goBackLocation = ref.read(appRouterProvider).namedLocation(AppRoutes.home, pathParameters: {'page': '0'});
 
     final form = _formKey.currentState;
     if (form == null || !form.validate()) {
@@ -237,7 +242,11 @@ class _RemittanceFormViewState extends ConsumerState<RemittanceFormView> {
           message: AppRecordMessages.registerSuccess,
           type: SnackBarType.success);
 
-      router.pop();
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go(goBackLocation);
+      }
     } on OdooException catch (e) {
       showCustomSnackBar(
           scaffoldMessenger: scaffoldMessenger,
@@ -388,9 +397,8 @@ class _RemittanceForm extends ConsumerWidget {
   }
 
   Widget _buildCurrencyComboBox(BuildContext context, WidgetRef ref, RateState state, ValueChanged<String?> onChanged, String? selectedId) {
-    assert(state.rates.isNotEmpty || state.errorMessage != null || state.isLoading);
 
-    if (state.errorMessage != null && state.rates.isEmpty) {
+    if (state.errorMessage != null) {
       return Column(
           children: [
             Text(
@@ -406,6 +414,15 @@ class _RemittanceForm extends ConsumerWidget {
                 child: const Text(AppButtons.retry)
             )
           ]
+      );
+    }
+
+    if (state.rates.isEmpty && !state.isLoading) {
+      return const Center(
+        child: Text(
+          'No hay tasas disponibles. Por favor, agregue una.',
+          textAlign: TextAlign.center,
+        ),
       );
     }
 
@@ -426,9 +443,8 @@ class _RemittanceForm extends ConsumerWidget {
   }
 
   Widget _buildAccountComboBox(BuildContext context, WidgetRef ref, AccountState state, ValueChanged<String?> onChanged, String? selectedId) {
-    assert(state.accounts.isNotEmpty || state.errorMessage != null || state.isLoading);
 
-    if (state.errorMessage != null && state.accounts.isEmpty) {
+    if (state.errorMessage != null) {
       return Column(
           children: [
             Text(
@@ -444,6 +460,15 @@ class _RemittanceForm extends ConsumerWidget {
                 child: const Text(AppButtons.retry)
             )
           ]
+      );
+    }
+
+    if (state.accounts.isEmpty && !state.isLoading) {
+      return const Center(
+        child: Text(
+          'No hay cuentas bancarias disponibles. Por favor, agregue una.',
+          textAlign: TextAlign.center,
+        ),
       );
     }
 

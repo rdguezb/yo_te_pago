@@ -16,9 +16,9 @@ class Currency {
 
     return Currency(
         id: (json['id'] as int?) ?? 0,
-        fullName: json['fullName'],
-        name: json['name'],
-        symbol: json['symbol']
+        fullName: json['fullName'] as String,
+        name: json['name'] as String,
+        symbol: json['symbol'] as String
     );
   }
 
