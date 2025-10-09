@@ -17,18 +17,28 @@ class LoadingScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            Image(
+              image: AssetImage('assets/icons/icon.png'),
+              width: 200,
+              height: 200
+            ),
+
+            SizedBox(height: 40),
+
             CircularProgressIndicator(strokeWidth: 4),
+
             SizedBox(height: 20),
+
             Text(
               AppGeneralMessages.loading,
               style: TextStyle(
                   fontSize: 18,
                   color: Colors.grey
-              ),
-            ),
-          ],
-        ),
-      ),
+              )
+            )
+          ]
+        )
+      )
     );
   }
 
