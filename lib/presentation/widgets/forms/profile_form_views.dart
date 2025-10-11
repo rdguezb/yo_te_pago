@@ -37,7 +37,15 @@ class _ProfileFormViewState extends ConsumerState<ProfileFormView> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(profileProvider.notifier).loadCurrentUser();
+      final currentUser = ref.read(profileProvider).user;
+
+      if (currentUser != null) {
+        _nameController.text = currentUser.name;
+        _loginController.text = currentUser.login;
+        _emailController.text = currentUser.email ?? '';
+      } else {
+        ref.read(profileProvider.notifier).loadCurrentUser();
+      }
     });
   }
 
@@ -54,15 +62,13 @@ class _ProfileFormViewState extends ConsumerState<ProfileFormView> {
   Widget build(BuildContext context) {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final profileState = ref.watch(profileProvider);
-    final user = profileState.user;
-
-    if (user != null && _nameController.text.isEmpty) {
-      _nameController.text = user.name;
-      _loginController.text = user.login;
-      _emailController.text = user.email ?? '';
-    }
 
     ref.listen(profileProvider, (previous, next) {
+      if (next.user != null && previous?.user == null) {
+        _nameController.text = next.user!.name;
+        _loginController.text = next.user!.login;
+        _emailController.text = next.user!.email ?? '';
+      }
       if (next.errorMessage != null && next.errorMessage != previous?.errorMessage) {
         showCustomSnackBar(
             scaffoldMessenger: scaffoldMessenger,
@@ -88,7 +94,7 @@ class _ProfileFormViewState extends ConsumerState<ProfileFormView> {
             centerTitle: true
         ),
         body: SafeArea(
-            child: (profileState.isLoading && user == null)
+            child: (profileState.isLoading)
                 ? const Center(child: CircularProgressIndicator())
                 : _ProfileForm(
                     formKey: _formKey,

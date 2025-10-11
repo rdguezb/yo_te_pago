@@ -20,8 +20,8 @@ class SettingsView extends ConsumerWidget {
     final authState = ref.watch(authNotifierProvider);
     final userRole = authState.session?.role;
 
-    final List<SettingOptions> options = settingOptions
-        .where((o) => o.allowedRoles.contains(userRole)).toList();
+    final availableOptions = allSettingOptions
+        .where((option) => option.isVisibleFor(userRole)).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -43,7 +43,7 @@ class SettingsView extends ConsumerWidget {
               ),
               const SliverPadding(padding: EdgeInsets.symmetric(vertical: 16.0)),
 
-              _SettingsMenuList(options: options),
+              _SettingsMenuList(options: availableOptions),
             ],
           ),
         ),
@@ -53,7 +53,7 @@ class SettingsView extends ConsumerWidget {
 }
 
 class _SettingsMenuList extends StatelessWidget {
-  final List<SettingOptions> options;
+  final List<SettingOption> options;
 
   const _SettingsMenuList({required this.options});
 

@@ -30,6 +30,7 @@ class ProfileState {
 
     return ProfileState(
       isLoading: isLoading ?? this.isLoading,
+      user: user ?? this.user,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
       lastUpdateSuccess: lastUpdateSuccess ?? this.lastUpdateSuccess
     );
@@ -52,9 +53,9 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
   }
 
   Future<void> loadCurrentUser() async {
-    if (state.isLoading || state.user != null) return;
+    if (state.user != null) return;
 
-    state = state.copyWith(isLoading: true);
+    state = state.copyWith(isLoading: true, clearError: true);
 
     final session = _ref.read(authNotifierProvider).session;
 

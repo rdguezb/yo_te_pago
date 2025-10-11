@@ -3,79 +3,152 @@ import 'package:flutter/material.dart';
 import 'package:yo_te_pago/business/config/constants/app_roles.dart';
 import 'package:yo_te_pago/business/config/constants/app_routes.dart';
 
-
-class SettingOptions {
-
+abstract class SettingOption {
   final String title;
+  final String subtitle;
   final IconData icon;
-  final List<String> allowedRoles;
-  final String? subtitle;
-  final String? routeName;
+  final String routeName;
 
-  SettingOptions({
+  const SettingOption({
     required this.title,
+    required this.subtitle,
     required this.icon,
-    required this.allowedRoles,
-    this.subtitle,
-    this.routeName
+    required this.routeName
   });
 
+  bool isVisibleFor(String? userRole);
 }
 
-final List<SettingOptions> settingOptions = [
-  SettingOptions(
-    title: 'Mi Cuenta',
-    icon: Icons.perm_identity_rounded,
-    allowedRoles: const [ApiRole.delivery, ApiRole.user, ApiRole.manager],
-    subtitle: 'Cambiar los datos de mi cuenta, mi nombre, etc.',
-    routeName: AppRoutes.profile
-  ),
-  SettingOptions(
-      title: 'Clave de Acceso',
-      icon: Icons.key_rounded,
-      allowedRoles: const [ApiRole.delivery, ApiRole.user, ApiRole.manager],
-      subtitle: 'Cambiar contraseña del usuario.',
-      routeName: AppRoutes.password
-  ),
-  SettingOptions(
-      title: 'Usuarios',
-      icon: Icons.group,
-      allowedRoles: const [ApiRole.manager],
-      subtitle: 'Creación/eliminación de usuarios en el sistema.',
-      routeName: AppRoutes.users
-  ),
-  SettingOptions(
-      title: 'Monedas y Tasas',
-      icon: Icons.monetization_on_outlined,
-      allowedRoles: const [ApiRole.manager],
-      subtitle: 'Asociar/Desasociar monedas para las remesas y tasas para el cambio.',
-      routeName: AppRoutes.currency
-  ),
-  SettingOptions(
-      title: 'Bancos',
-      icon: Icons.business_rounded,
-      allowedRoles: const [ApiRole.manager],
-      subtitle: 'Creación/Eliminación de bancos.',
-      routeName: AppRoutes.banks
-  ),
-  SettingOptions(
-      title: 'Cuentas de Bancos',
-      icon: Icons.account_balance_wallet_rounded,
-      allowedRoles: const [ApiRole.manager],
-      subtitle: 'Creación/eliminación de cuentas de bancos.',
-      routeName: AppRoutes.bankAccount
-  ),
-  SettingOptions(
-      title: 'Privacidad',
-      icon: Icons.lock_outline_rounded,
-      allowedRoles: const [ApiRole.manager],
-      subtitle: 'Definir comportamientos y/o parametros en la aplicación.',
-      routeName: AppRoutes.settings
-  ),
-  SettingOptions(
-      title: 'Actualizaciones de la aplicacion',
-      icon: Icons.install_mobile_rounded,
-      allowedRoles: const [ApiRole.delivery, ApiRole.user, ApiRole.manager],
-      routeName: AppRoutes.appUpdate
-  ),
+class ProfileSettingOption extends SettingOption {
+  const ProfileSettingOption()
+      : super(
+          title: 'Mi Cuenta',
+          subtitle: 'Cambiar los datos de mi cuenta, mi nombre, etc.',
+          icon: Icons.perm_identity_rounded,
+          routeName: AppRoutes.profile
+        );
+
+  @override
+  bool isVisibleFor(String? userRole) {
+    return userRole == ApiRole.delivery || userRole == ApiRole.user ||
+        userRole == ApiRole.manager;
+  }
+}
+
+class PasswordSettingOption extends SettingOption {
+  const PasswordSettingOption()
+      : super(
+          title: 'Clave de Acceso',
+          subtitle: 'Cambiar contraseña del usuario.',
+          icon: Icons.key_rounded,
+          routeName: AppRoutes.password
+        );
+
+  @override
+  bool isVisibleFor(String? userRole) {
+    return userRole == ApiRole.delivery || userRole == ApiRole.user ||
+        userRole == ApiRole.manager;
+  }
+}
+
+class UsersSettingOption extends SettingOption {
+  const UsersSettingOption()
+      : super(
+          title: 'Usuarios',
+          subtitle: 'Creación/eliminación de usuarios en el sistema.',
+          icon: Icons.group,
+          routeName: AppRoutes.users
+        );
+
+  @override
+  bool isVisibleFor(String? userRole) {
+    return userRole == ApiRole.manager;
+  }
+}
+
+class CurrencyRateSettingOption extends SettingOption {
+  const CurrencyRateSettingOption()
+      : super(
+          title: 'Monedas y Tasas',
+          subtitle: 'Asociar/Desasociar monedas para las remesas y tasas para el cambio.',
+          icon: Icons.monetization_on_outlined,
+          routeName: AppRoutes.currency
+        );
+
+  @override
+  bool isVisibleFor(String? userRole) {
+    return userRole == ApiRole.manager;
+  }
+}
+
+class BanksSettingOption extends SettingOption {
+  const BanksSettingOption()
+      : super(
+          title: 'Bancos',
+          subtitle: 'Creación/Eliminación de bancos.',
+          icon: Icons.business_rounded,
+          routeName: AppRoutes.banks
+        );
+
+  @override
+  bool isVisibleFor(String? userRole) {
+    return userRole == ApiRole.manager;
+  }
+}
+
+class BankAccountsSettingOption extends SettingOption {
+  const BankAccountsSettingOption()
+      : super(
+          title: 'Cuentas de Bancos',
+          subtitle: 'Creación/eliminación de cuentas de bancos.',
+          icon: Icons.account_balance_rounded,
+          routeName: AppRoutes.bankAccount
+        );
+
+  @override
+  bool isVisibleFor(String? userRole) {
+    return userRole == ApiRole.manager;
+  }
+}
+
+class PrivacySettingOption extends SettingOption {
+  const PrivacySettingOption()
+      : super(
+          title: 'Privacidad',
+          subtitle: 'Definir comportamientos y/o parametros en la aplicación.',
+          icon: Icons.lock_outline_rounded,
+          routeName: AppRoutes.settings
+        );
+
+  @override
+  bool isVisibleFor(String? userRole) {
+    return userRole == ApiRole.manager;
+  }
+}
+
+class AppUpdateSettingOption extends SettingOption {
+  const AppUpdateSettingOption()
+      : super(
+          title: 'Actualizaciones de la aplicacion',
+          subtitle: '',
+          icon: Icons.install_mobile_rounded,
+          routeName: AppRoutes.appUpdate
+        );
+
+  @override
+  bool isVisibleFor(String? userRole) {
+    return userRole == ApiRole.delivery || userRole == ApiRole.user ||
+        userRole == ApiRole.manager;
+  }
+}
+
+final List<SettingOption> allSettingOptions = [
+  const ProfileSettingOption(),
+  const PasswordSettingOption(),
+  const UsersSettingOption(),
+  const CurrencyRateSettingOption(),
+  const BanksSettingOption(),
+  const BankAccountsSettingOption(),
+  const PrivacySettingOption(),
+  const AppUpdateSettingOption()
 ];
