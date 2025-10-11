@@ -30,7 +30,6 @@ class AccountFormView extends ConsumerStatefulWidget {
 class _AccountFormViewState extends ConsumerState<AccountFormView> {
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
   String? _selectedAccountId;
   String? _selectedDeliveryId;
 

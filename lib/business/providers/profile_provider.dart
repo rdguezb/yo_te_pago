@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:yo_te_pago/business/domain/entities/user.dart';
 import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
+import 'package:yo_te_pago/business/providers/auth_notifier.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/infrastructure/services/odoo_services.dart';
 
@@ -10,14 +11,17 @@ class ProfileState {
   final bool isLoading;
   final String? errorMessage;
   final bool lastUpdateSuccess;
+  final User? user;
 
   ProfileState({
+    this.user,
     this.isLoading = false,
     this.errorMessage,
     this.lastUpdateSuccess = false
   });
 
   ProfileState copyWith({
+    User? user,
     bool? isLoading,
     String? errorMessage,
     bool? lastUpdateSuccess,
@@ -46,6 +50,30 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     }
     return true;
   }
+
+  Future<void> loadCurrentUser() async {
+    if (state.isLoading || state.user != null) return;
+
+    state = state.copyWith(isLoading: true);
+
+    final session = _ref.read(authNotifierProvider).session;
+
+    if (session == null) {
+      state = state.copyWith(
+          isLoading: false, errorMessage: 'Error: No se encontró la sesión del usuario.');
+    } else {
+      final user = User(
+          id: session.partnerId,
+          userId: session.userId,
+          name: session.partnerName,
+          role: session.role!,
+          email: session.email,
+          login: session.userName
+      );
+      state = state.copyWith(isLoading: false, user: user);
+    }
+  }
+
 
   Future<void> editProfile(User user) async {
     if (!_isSessionValid()) return;

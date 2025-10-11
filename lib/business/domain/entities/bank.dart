@@ -26,4 +26,11 @@ class Bank {
         name: name ?? this.name
     );
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name
+    };
+  }
+
 }

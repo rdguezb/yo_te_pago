@@ -750,7 +750,9 @@ class OdooService extends IBaseService {
   @override
   Future<Bank> addBank(Bank bank) async {
     final body = {
-      'name': bank.name
+      'params': {
+        'data': bank.toMap()
+      }
     };
 
     try {
@@ -779,28 +781,30 @@ class OdooService extends IBaseService {
   @override
   Future<bool> updateBank(Bank bank) async {
     final String url = '${OdooEndpoints.bankBase}/${bank.id}';
-    Map<String, dynamic> dataMap = {
-      'name': bank.name
+    final body = {
+      'params': {
+        'data': bank.toMap()
+      }
     };
 
     try {
       final dynamic response = await _sendJsonRequest(
           'PUT',
           url,
-          bodyParams: dataMap);
+          bodyParams: body);
 
       if (response != null && response['success'] == true) {
         return true;
       } else {
-        final serverMessage = response?['message'] ?? 'The server did not confirm the rate update.';
+        final serverMessage = response?['message'] ?? 'The server did not confirm the bank update.';
         throw OdooException(serverMessage);
       }
     } on OdooException catch (e) {
-      print('OdooException while changing rate with ID ${bank.id}: ${e.message}');
+      print('OdooException while changing bank with ID ${bank.id}: ${e.message}');
       rethrow;
     } catch (e) {
-      print('Unexpected error while changing rate with ID ${bank.id}: $e');
-      throw OdooException('An unexpected error occurred while changing the rate value!');
+      print('Unexpected error while changing bank with ID ${bank.id}: $e');
+      throw OdooException('An unexpected error occurred while changing the bank!');
     }
   }
 
@@ -919,11 +923,17 @@ class OdooService extends IBaseService {
 
   @override
   Future<bool> updateParameters(Company company) async {
+    final body = {
+      'params': {
+        'data': company.toMap()
+      }
+    };
+
     try {
       final response = await _sendJsonRequest(
         'PUT',
         OdooEndpoints.settingsBase,
-        bodyParams: company.toUpdateJson());
+        bodyParams: body);
 
       if (response['success'] == true) {
         return true;

@@ -8,7 +8,6 @@ import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/helpers/form_fields_validators.dart';
 import 'package:yo_te_pago/business/domain/entities/user.dart';
-import 'package:yo_te_pago/business/providers/auth_notifier.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/business/providers/profile_provider.dart';
 import 'package:yo_te_pago/presentation/widgets/input/custom_text_form_fields.dart';
@@ -32,14 +31,13 @@ class _ProfileFormViewState extends ConsumerState<ProfileFormView> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _loginController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
-  User? _user;
 
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeFormData();
+      ref.read(profileProvider.notifier).loadCurrentUser();
     });
   }
 
@@ -56,6 +54,13 @@ class _ProfileFormViewState extends ConsumerState<ProfileFormView> {
   Widget build(BuildContext context) {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final profileState = ref.watch(profileProvider);
+    final user = profileState.user;
+
+    if (user != null && _nameController.text.isEmpty) {
+      _nameController.text = user.name;
+      _loginController.text = user.login;
+      _emailController.text = user.email ?? '';
+    }
 
     ref.listen(profileProvider, (previous, next) {
       if (next.errorMessage != null && next.errorMessage != previous?.errorMessage) {
@@ -83,48 +88,18 @@ class _ProfileFormViewState extends ConsumerState<ProfileFormView> {
             centerTitle: true
         ),
         body: SafeArea(
-            child: SingleChildScrollView(
-          child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: _ProfileForm(
-                  formKey: _formKey,
-                  nameController: _nameController,
-                  usernameController: _loginController,
-                  emailController: _emailController,
-                  isSaving: profileState.isLoading,
-                  onSave: _saveMyProfile))
-        )));
-  }
-
-  void _initializeFormData() {
-    if (!mounted) return;
-    ref.read(profileProvider.notifier).resetState();
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-    final session = ref.read(authNotifierProvider).session;
-
-    if (session == null) {
-      showCustomSnackBar(
-          scaffoldMessenger: scaffoldMessenger,
-          message: 'Error: No se encontró el usuario.',
-          type: SnackBarType.error);
-      if (context.canPop()) context.pop();
-    } else {
-      final user = User(
-          id: session.partnerId,
-          userId: session.userId,
-          name: session.partnerName,
-          role: session.role!,
-          email: session.email,
-          login: session.userName);
-
-      _nameController.text = user.name;
-      _loginController.text = user.login;
-      _emailController.text = user.email ?? '';
-      setState(() {
-        _user = user;
-      });
-    }
+            child: (profileState.isLoading && user == null)
+                ? const Center(child: CircularProgressIndicator())
+                : _ProfileForm(
+                    formKey: _formKey,
+                    nameController: _nameController,
+                    usernameController: _loginController,
+                    emailController: _emailController,
+                    isSaving: profileState.isLoading,
+                    onSave: _saveMyProfile
+                  )
+        )
+    );
   }
 
   Future<void> _saveMyProfile() async {
@@ -140,7 +115,8 @@ class _ProfileFormViewState extends ConsumerState<ProfileFormView> {
       return;
     }
 
-    if (_user == null) {
+    final originalUser = ref.read(profileProvider).user;
+    if (originalUser == null) {
       showCustomSnackBar(
           scaffoldMessenger: scaffoldMessenger,
           message: 'Error: No se ha podido cargar la información del usuario.',
@@ -152,7 +128,7 @@ class _ProfileFormViewState extends ConsumerState<ProfileFormView> {
     final username = _loginController.text;
     final email = _emailController.text;
 
-    User userToSave = _user!.copyWith(name: name, login: username, email: email);
+    User userToSave = originalUser.copyWith(name: name, login: username, email: email);
 
     await ref.read(profileProvider.notifier).editProfile(userToSave);
   }
@@ -179,51 +155,54 @@ class _ProfileForm extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = Theme.of(context).colorScheme;
 
-    return Form(
-      key: formKey,
-      autovalidateMode: AutovalidateMode.onUserInteraction,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Icon(
-              Icons.account_circle_outlined,
-              color: colors.primary,
-              size: 80),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24.0),
+      child: Form(
+        key: formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Icon(
+                Icons.account_circle_outlined,
+                color: colors.primary,
+                size: 80),
 
-          const SizedBox(height: 40),
+            const SizedBox(height: 40),
 
-          CustomTextFormField(
-              label: AppFormLabels.partnerName,
-              controller: nameController,
-              isRequired: true,
-              validator: (value) => FormValidators.validateRequired(value)),
+            CustomTextFormField(
+                label: AppFormLabels.partnerName,
+                controller: nameController,
+                isRequired: true,
+                validator: (value) => FormValidators.validateRequired(value)),
 
-          const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-          CustomTextFormField(
-              label: AppFormLabels.username,
-              controller: usernameController,
-              isRequired: true,
-              validator: (value) => FormValidators.validateRequired(value)),
+            CustomTextFormField(
+                label: AppFormLabels.username,
+                controller: usernameController,
+                isRequired: true,
+                validator: (value) => FormValidators.validateRequired(value)),
 
-          const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-          CustomTextFormField(
-              label: AppFormLabels.email,
-              controller: emailController,
-              validator: (value) => FormValidators.validateEmail(value)),
+            CustomTextFormField(
+                label: AppFormLabels.email,
+                controller: emailController,
+                validator: (value) => FormValidators.validateEmail(value)),
 
-          const SizedBox(height: 40),
+            const SizedBox(height: 40),
 
-          FilledButton.tonalIcon(
-            icon: isSaving
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.save_rounded),
-            label: const Text(AppButtons.save),
-            onPressed: isSaving ? null : onSave
-          ),
-        ],
-      ),
+            FilledButton.tonalIcon(
+              icon: isSaving
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.save_rounded),
+              label: const Text(AppButtons.save),
+              onPressed: isSaving ? null : onSave
+            ),
+          ],
+        ),
+      )
     );
   }
 }

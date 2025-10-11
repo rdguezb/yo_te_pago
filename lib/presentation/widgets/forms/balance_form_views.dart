@@ -31,9 +31,7 @@ class BalanceFormView extends ConsumerStatefulWidget {
 class _BalanceFormViewState extends ConsumerState<BalanceFormView> {
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
   final TextEditingController _amountController = TextEditingController();
-
   String? _selectedCurrencyId;
   String? _selectedDeliveryId;
 

@@ -8,7 +8,6 @@ import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/helpers/form_fields_validators.dart';
 import 'package:yo_te_pago/business/providers/settings_provider.dart';
-import 'package:yo_te_pago/presentation/routes/app_router.dart';
 import 'package:yo_te_pago/presentation/widgets/input/custom_text_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 
@@ -27,7 +26,6 @@ class SettingsFormView extends ConsumerStatefulWidget {
 class _SettingsFormViewState extends ConsumerState<SettingsFormView> {
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
   final TextEditingController _hoursController = TextEditingController();
 
   @override
@@ -35,9 +33,7 @@ class _SettingsFormViewState extends ConsumerState<SettingsFormView> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (ref.read(settingsProvider).company?.hoursKeeps == null) {
-        ref.read(settingsProvider.notifier).loadParameters();
-      }
+      ref.read(settingsProvider.notifier).loadParameters();
     });
   }
 
@@ -50,8 +46,14 @@ class _SettingsFormViewState extends ConsumerState<SettingsFormView> {
 
   @override
   Widget build(BuildContext context) {
+    final company = ref.watch(settingsProvider.select((state) => state.company));
+    final isLoading = ref.watch(settingsProvider.select((s) => s.isLoading));
+
+    if (company != null && company.hoursKeeps > 0 && _hoursController.text.isEmpty) {
+      _hoursController.text = company.hoursKeeps.toString();
+    }
+
     final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final settingsState = ref.watch(settingsProvider);
 
     ref.listen(settingsProvider, (previous, next) {
       if (next.errorMessage != null && next.errorMessage != previous?.errorMessage) {
@@ -69,11 +71,6 @@ class _SettingsFormViewState extends ConsumerState<SettingsFormView> {
         );
         if (context.canPop()) context.pop();
       }
-      if (next.company != null) {
-        if (_hoursController.text != next.company!.hoursKeeps.toString()) {
-          _hoursController.text = next.company!.hoursKeeps.toString();
-        }
-      }
     });
 
     return Scaffold(
@@ -82,12 +79,12 @@ class _SettingsFormViewState extends ConsumerState<SettingsFormView> {
             centerTitle: true
         ),
         body: SafeArea(
-            child: (settingsState.isLoading && settingsState.company == null)
+            child: (isLoading && _hoursController.text.isEmpty)
                 ? const Center(child: CircularProgressIndicator())
                 : _SettingsForm(
                       formKey: _formKey,
                       hoursController: _hoursController,
-                      isSaving: settingsState.isLoading,
+                      isSaving: isLoading,
                       onSave: _saveParameters
                   )
         )

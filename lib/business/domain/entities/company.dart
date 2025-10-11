@@ -30,9 +30,9 @@ class Company {
     );
   }
 
-  Map<String, dynamic> toUpdateJson() {
+  Map<String, dynamic> toMap() {
     return {
-      'hours_keeps': hoursKeeps,
+      'hours_keeps': hoursKeeps
     };
   }
 

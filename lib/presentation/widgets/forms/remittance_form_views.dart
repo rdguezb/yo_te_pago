@@ -49,7 +49,6 @@ class _RemittanceFormViewState extends ConsumerState<RemittanceFormView> {
   late final bool _isEditing;
   String? _selectedRateId;
   String? _selectedAccountId;
-  bool _isInitialLoadAttempted = false;
 
   @override
   void initState() {
@@ -70,6 +69,15 @@ class _RemittanceFormViewState extends ConsumerState<RemittanceFormView> {
       _dateController.text = HumanFormats.toShortDate(now);
       _timeController.text = HumanFormats.toShortTime(now);
     }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ref.read(rateProvider).rates.isEmpty) {
+        ref.read(rateProvider.notifier).loadRates();
+      }
+      if (ref.read(accountProvider).accounts.isEmpty) {
+        ref.read(accountProvider.notifier).loadAccounts();
+      }
+    });
   }
 
   @override
@@ -85,18 +93,6 @@ class _RemittanceFormViewState extends ConsumerState<RemittanceFormView> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isInitialLoadAttempted) {
-      Future.microtask(() {
-        if (ref.read(rateProvider).rates.isEmpty) {
-          ref.read(rateProvider.notifier).loadRates();
-        }
-        if (ref.read(accountProvider).accounts.isEmpty) {
-          ref.read(accountProvider.notifier).loadAccounts();
-        }
-      });
-      _isInitialLoadAttempted = true;
-    }
-
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final rateState = ref.watch(rateProvider);
     final accountState = ref.watch(accountProvider);
@@ -142,7 +138,7 @@ class _RemittanceFormViewState extends ConsumerState<RemittanceFormView> {
                   isSaving: remittanceState.isLoading,
                   isEditing: _isEditing,
                   onSave: _saveRemittance
-              )
+                )
       )
     );
   }

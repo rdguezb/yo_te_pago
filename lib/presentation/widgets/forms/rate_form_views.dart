@@ -34,9 +34,7 @@ class RateFormView extends ConsumerStatefulWidget {
 class _RateFormViewState extends ConsumerState<RateFormView> {
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
   final TextEditingController _rateController = TextEditingController();
-
   String? _selectedCurrencyId;
   String? _selectedDeliveryId;
 

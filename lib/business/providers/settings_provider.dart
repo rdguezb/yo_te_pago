@@ -14,7 +14,7 @@ class SettingsState {
   final bool lastUpdateSuccess;
 
   SettingsState({
-    this.company = null,
+    this.company,
     this.isLoading = false,
     this.errorMessage,
     this.lastUpdateSuccess = false
@@ -71,7 +71,12 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       return;
     }
 
-    if (state.isLoading || state.company == null) return;
+    if (state.isLoading) return;
+
+    if (state.company == null) {
+      state = state.copyWith(errorMessage: 'No se pudo determinar la compañía activa.');
+      return;
+    }
 
     state = state.copyWith(
         isLoading: true,
