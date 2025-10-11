@@ -4,30 +4,47 @@ abstract class AppRoutes {
 
   static const home = 'home';
   static const register = 'register';
-  static const remittanceEdit = 'remittance-edit';
-  static const remittanceCreate = 'remittance-create';
-  static const rate = 'rate';
-  static const balance = 'balance';
-  static const account = 'account';
-  static const profile = 'profile';
+  static const loading = 'loading';
+
+  static const dashboard = 'dashboard';
+  static const remittance = 'remittance-add';
+  static const balance = 'balance-update';
+  static const rate = 'rate-add';
+  static const account = 'account-link';
+
+  static const profile = 'setting-profile';
+  static const settings = 'setting-settings';
+  static const banks = 'setting-banks';
+  static const banksCreate = 'banks-form';
+
+  static const password = 'setting-password';
+  static const users = 'setting-users';
+  static const currency = 'setting-currencies';
+  static const bankAccount = 'setting-bank-accounts';
+  static const appUpdate = 'setting-app-update';
 
   // path
 
   static const loadingUrl = '/loading';
-  static const homeUrl = '/home/:page';
   static const registerUrl = '/register';
-  static const remittanceEditUrl = '/remittance/edit/:id';
-  static const remittanceCreateUrl = '/remittance/create';
-  static const rateUrl = '/rate/create';
+  static const homeUrl = '/home/:page';
+  static const dashboardUrl = '/';
+
+  static const remittanceUrl = '/remittance';
+
   static const balanceUrl = '/balance/create';
+  static const rateUrl = '/rate/create';
   static const accountUrl = '/account/link';
+
   static const profileUrl = '/setting/profile';
+  static const settingsUrl = '/setting/settings';
+  static const banksUrl = '/setting/banks';
+  static const banksCreateUrl = '/banks/create';
+
   static const passwordUrl = '/setting/password';
   static const usersUrl = '/setting/users';
   static const currenciesUrl = '/setting/currencies';
-  static const banksUrl = '/setting/banks';
   static const bankAccountsUrl = '/setting/bank-accounts';
-  static const settingsUrl = '/setting/settings';
   static const appUpdateUrl = '/setting/app-update';
 
 }

@@ -3,15 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:yo_te_pago/business/config/constants/app_routes.dart';
+import 'package:yo_te_pago/business/domain/entities/bank.dart';
+import 'package:yo_te_pago/business/domain/entities/remittance.dart';
 import 'package:yo_te_pago/business/providers/auth_notifier.dart';
 import 'package:yo_te_pago/presentation/screens/home_screen.dart';
 import 'package:yo_te_pago/presentation/screens/loading_screen.dart';
 import 'package:yo_te_pago/presentation/screens/register_screen.dart';
+import 'package:yo_te_pago/presentation/views/settings/banks_views.dart';
 import 'package:yo_te_pago/presentation/widgets/forms/balance_form_views.dart';
-import 'package:yo_te_pago/presentation/widgets/forms/bank_account_form_views.dart';
+import 'package:yo_te_pago/presentation/widgets/forms/account_form_views.dart';
+import 'package:yo_te_pago/presentation/widgets/forms/bank_form_views.dart';
 import 'package:yo_te_pago/presentation/widgets/forms/profile_form_views.dart';
 import 'package:yo_te_pago/presentation/widgets/forms/rate_form_views.dart';
 import 'package:yo_te_pago/presentation/widgets/forms/remittance_form_views.dart';
+import 'package:yo_te_pago/presentation/widgets/forms/setting_form_views.dart';
 import 'package:yo_te_pago/presentation/widgets/under_construction_views.dart';
 
 
@@ -27,88 +32,98 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
     routes: [
       GoRoute(
+        name: AppRoutes.loading,
         path: AppRoutes.loadingUrl,
         builder: (context, state) => const LoadingScreen()
       ),
       GoRoute(
-        path: '/',
+        name: AppRoutes.dashboard,
+        path: AppRoutes.dashboardUrl,
         redirect: (_, __) => '/home/0'
       ),
       GoRoute(
-        path: AppRoutes.homeUrl,
+          name: AppRoutes.register,
+          path: AppRoutes.registerUrl,
+          builder: (context, state) => const RegisterScreen()
+      ),
+      GoRoute(
         name: AppRoutes.home,
+        path: AppRoutes.homeUrl,
         builder: (context, state) {
           final pageIndex = int.tryParse(state.pathParameters['page'] ?? '0') ?? 0;
 
           return HomeScreen(pageIndex: pageIndex);
-        },
+        }
       ),
       GoRoute(
-        path: AppRoutes.registerUrl,
-        name: AppRoutes.register,
-        builder: (context, state) => const RegisterScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.remittanceEditUrl,
-        name: AppRoutes.remittanceEdit,
+        name: AppRoutes.remittance,
+        path: AppRoutes.remittanceUrl,
         builder: (context, state) {
-          final id = int.tryParse(state.pathParameters['id'] ?? '0');
-
-          return RemittanceFormView(id: id);
-        },
+          final remittance = state.extra as Remittance?;
+          return RemittanceFormView(remittance: remittance);
+        }
       ),
       GoRoute(
-        path: AppRoutes.remittanceCreateUrl,
-        name: AppRoutes.remittanceCreate,
-        builder: (context, state) => const RemittanceFormView(),
-      ),
-      GoRoute(
-        path: AppRoutes.balanceUrl,
         name: AppRoutes.balance,
-        builder: (context, state) => const BalanceFormView(),
+        path: AppRoutes.balanceUrl,
+        builder: (context, state) => const BalanceFormView()
       ),
       GoRoute(
-        path: AppRoutes.rateUrl,
         name: AppRoutes.rate,
-        builder: (context, state) => const RateFormView(),
+        path: AppRoutes.rateUrl,
+        builder: (context, state) => const RateFormView()
       ),
       GoRoute(
-        path: AppRoutes.accountUrl,
         name: AppRoutes.account,
-        builder: (context, state) => const BankAccountFormView(),
+        path: AppRoutes.accountUrl,
+        builder: (context, state) => const AccountFormView()
       ),
       GoRoute(
-        path: AppRoutes.profileUrl,
         name: AppRoutes.profile,
-        builder: (context, state) => const ProfileFormView(),
+        path: AppRoutes.profileUrl,
+        builder: (context, state) => const ProfileFormView()
       ),
       GoRoute(
+        name: AppRoutes.settings,
+        path: AppRoutes.settingsUrl,
+        builder: (context, state) => const SettingsFormView()
+      ),
+      GoRoute(
+        name: AppRoutes.banks,
+        path: AppRoutes.banksUrl,
+        builder: (context, state) => const BankViews()
+      ),
+      GoRoute(
+        name: AppRoutes.banksCreate,
+        path: AppRoutes.banksCreateUrl,
+        builder: (context, state) {
+          final bank = state.extra as Bank?;
+          return BanksFormView(bank: bank);
+        }
+      ),
+      GoRoute(
+        name: AppRoutes.password,
         path: AppRoutes.passwordUrl,
         builder: (context, state) => const PlaceholderScreen(title: 'Cambiar Contraseña'),
       ),
       GoRoute(
+        name: AppRoutes.users,
         path: AppRoutes.usersUrl,
         builder: (context, state) => const PlaceholderScreen(title: 'Usuarios'),
       ),
       GoRoute(
+        name: AppRoutes.currency,
         path: AppRoutes.currenciesUrl,
         builder: (context, state) => const PlaceholderScreen(title: 'Monedas'),
       ),
       GoRoute(
-        path: AppRoutes.banksUrl,
-        builder: (context, state) => const PlaceholderScreen(title: 'Bancos'),
-      ),
-      GoRoute(
+        name: AppRoutes.bankAccount,
         path: AppRoutes.bankAccountsUrl,
         builder: (context, state) => const PlaceholderScreen(title: 'Cuentas Bancarias'),
       ),
       GoRoute(
-        path: AppRoutes.settingsUrl,
-        builder: (context, state) => const PlaceholderScreen(title: 'Configuración'),
-      ),
-      GoRoute(
+        name: AppRoutes.appUpdate,
         path: AppRoutes.appUpdateUrl,
-        name: 'app-update', // Es buena práctica añadir un nombre único
         builder: (context, state) => const PlaceholderScreen(title: 'Actualización'),
       ),
     ],

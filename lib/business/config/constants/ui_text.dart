@@ -12,8 +12,13 @@ abstract class AppTitles {
   static const balanceCreate = 'Entrada/Salida de Saldo';
   static const bankAccount = 'Cuentas Bancarias';
   static const bankAccountLink = 'Asociar Cuenta Bancaria';
+  static const bank = 'Mis Bancos';
+  static const bankEdit = 'Editar Banco';
 
-  static const myAccount = 'Mi Cuenta';
+  static const myProfile = 'Mi Cuenta';
+  static const companyParameters = 'Parámetros / Configuraciones';
+
+
   static const myPassword = 'Cambiar Contraseña';
 
 }

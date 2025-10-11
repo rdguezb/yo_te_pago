@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:yo_te_pago/business/config/constants/app_record_messages.dart';
+import 'package:yo_te_pago/business/config/constants/app_messages.dart';
 import 'package:yo_te_pago/business/config/constants/app_routes.dart';
 import 'package:yo_te_pago/business/config/constants/app_validation.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
@@ -11,11 +11,9 @@ import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/helpers/form_fields_validators.dart';
 import 'package:yo_te_pago/business/config/helpers/human_formats.dart';
 import 'package:yo_te_pago/business/domain/entities/remittance.dart';
-import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
 import 'package:yo_te_pago/business/providers/accounts_provider.dart';
 import 'package:yo_te_pago/business/providers/rates_provider.dart';
 import 'package:yo_te_pago/business/providers/remittances_provider.dart';
-import 'package:yo_te_pago/presentation/routes/app_router.dart';
 import 'package:yo_te_pago/presentation/widgets/input/custom_text_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/input/date_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/input/decimal_form_fields.dart';
@@ -26,12 +24,13 @@ import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 
 class RemittanceFormView extends ConsumerStatefulWidget {
 
-  static const name = 'remittance';
-  final int? id;
+  static const name = AppRoutes.remittance;
+
+  final Remittance? remittance;
 
   const RemittanceFormView({
     super.key,
-    this.id
+    this.remittance
   });
 
   @override
@@ -42,31 +41,35 @@ class RemittanceFormView extends ConsumerStatefulWidget {
 class _RemittanceFormViewState extends ConsumerState<RemittanceFormView> {
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _codeController = TextEditingController();
   final TextEditingController _customerController = TextEditingController();
   final TextEditingController _dateController = TextEditingController();
   final TextEditingController _timeController = TextEditingController();
-
+  late final bool _isEditing;
   String? _selectedRateId;
   String? _selectedAccountId;
-  Remittance? _remittance;
+  bool _isInitialLoadAttempted = false;
 
   @override
   void initState() {
     super.initState();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (ref.read(rateProvider).rates.isEmpty) {
-        ref.read(rateProvider.notifier).loadRates();
-      }
-      if (ref.read(accountProvider).accounts.isEmpty) {
-        ref.read(accountProvider.notifier).loadAccounts();
-      }
+    _isEditing = widget.remittance != null;
 
-      _initializeFormData();
-    });
+    if (_isEditing) {
+      _amountController.text = widget.remittance!.amount.toString();
+      _codeController.text = widget.remittance!.code ?? '';
+      _customerController.text = widget.remittance!.customer;
+      _dateController.text = HumanFormats.toShortDate(widget.remittance!.createdAt);
+      _timeController.text = HumanFormats.toShortTime(widget.remittance!.createdAt);
+      _selectedRateId = widget.remittance!.currencyId.toString();
+      _selectedAccountId = widget.remittance!.bankAccountId.toString();
+    } else {
+      final now = DateTime.now();
+      _dateController.text = HumanFormats.toShortDate(now);
+      _timeController.text = HumanFormats.toShortTime(now);
+    }
   }
 
   @override
@@ -82,23 +85,45 @@ class _RemittanceFormViewState extends ConsumerState<RemittanceFormView> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_isInitialLoadAttempted) {
+      Future.microtask(() {
+        if (ref.read(rateProvider).rates.isEmpty) {
+          ref.read(rateProvider.notifier).loadRates();
+        }
+        if (ref.read(accountProvider).accounts.isEmpty) {
+          ref.read(accountProvider.notifier).loadAccounts();
+        }
+      });
+      _isInitialLoadAttempted = true;
+    }
+
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     final rateState = ref.watch(rateProvider);
     final accountState = ref.watch(accountProvider);
+    final remittanceState = ref.watch(remittanceProvider);
 
-    final String appBarTitle = widget.id != null
-        ? AppTitles.remittanceEdit
-        : AppTitles.remittanceCreate;
-
-    final goBackLocation = ref.read(appRouterProvider).namedLocation(AppRoutes.home, pathParameters: {'page': '0'});
+    ref.listen(remittanceProvider, (previous, next) {
+      if (next.errorMessage != null && next.errorMessage != previous?.errorMessage) {
+        showCustomSnackBar(
+            scaffoldMessenger: scaffoldMessenger,
+            message: next.errorMessage!,
+            type: SnackBarType.error
+        );
+      }
+      if (next.lastUpdateSuccess && previous?.lastUpdateSuccess == false) {
+        showCustomSnackBar(
+            scaffoldMessenger: scaffoldMessenger,
+            message: AppMessages.operationSuccess,
+            type: SnackBarType.success
+        );
+        if (context.canPop()) context.pop();
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(appBarTitle),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => context.canPop() ? context.pop() : context.go(goBackLocation)
-        )
+        title: Text(_isEditing ? AppTitles.remittanceEdit : AppTitles.remittanceCreate),
+        centerTitle: true
       ),
       body: SafeArea(
           child: (rateState.isLoading || accountState.isLoading)
@@ -114,63 +139,22 @@ class _RemittanceFormViewState extends ConsumerState<RemittanceFormView> {
                   onAccountChanged: (value) => setState(() => _selectedAccountId = value),
                   selectedRateId: _selectedRateId,
                   selectedAccountId: _selectedAccountId,
-                  onSave: _saveRemittance,
-                  remittance: _remittance
+                  isSaving: remittanceState.isLoading,
+                  isEditing: _isEditing,
+                  onSave: _saveRemittance
               )
       )
     );
   }
 
-  void _initializeFormData() {
-    if (!mounted) return;
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final goBackLocation = ref.read(appRouterProvider).namedLocation(AppRoutes.home, pathParameters: {'page': '0'});
-
-    if (widget.id != null) {
-      final remittance = ref.read(remittanceProvider).remittances.firstWhereOrNull(
-              (c) => c.id == widget.id);
-
-      if (remittance != null) {
-        _amountController.text = remittance.amount.toString();
-        _codeController.text = remittance.code ?? '';
-        _customerController.text = remittance.customer;
-        _dateController.text = HumanFormats.toShortDate(remittance.createdAt);
-        _timeController.text = HumanFormats.toShortTime(remittance.createdAt);
-
-        setState(() {
-          _remittance = remittance;
-          _selectedRateId = remittance.currencyId.toString();
-          _selectedAccountId = remittance.bankAccountId.toString();
-        });
-      } else {
-        showCustomSnackBar(
-            scaffoldMessenger: scaffoldMessenger,
-            message: 'Error: No se encontró la remesa seleccionada.',
-            type: SnackBarType.error);
-
-        if (context.canPop()) {
-          context.pop();
-        } else {
-          context.go(goBackLocation);
-        }
-      }
-    } else {
-      final now = DateTime.now();
-      _dateController.text = HumanFormats.toShortDate(now);
-      _timeController.text = HumanFormats.toShortTime(now);
-    }
-  }
-
   Future<void> _saveRemittance() async {
-    if (!mounted) return;
     final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final goBackLocation = ref.read(appRouterProvider).namedLocation(AppRoutes.home, pathParameters: {'page': '0'});
 
     final form = _formKey.currentState;
     if (form == null || !form.validate()) {
       showCustomSnackBar(
           scaffoldMessenger: scaffoldMessenger,
-          message: AppRecordMessages.formHasErrors,
+          message: AppMessages.formHasErrors,
           type: SnackBarType.warning);
       return;
     }
@@ -188,75 +172,50 @@ class _RemittanceFormViewState extends ConsumerState<RemittanceFormView> {
     final code = _codeController.text.trim();
     final createDate = HumanFormats.toDateTime('${_dateController.text} ${_timeController.text}');
 
-    try {
-      final rate = ref.read(rateProvider).rates.firstWhereOrNull(
-              (c) => c.currencyId.toString() == _selectedRateId);
-      final account = ref.read(accountProvider).accounts.firstWhereOrNull(
-              (c) => c.id.toString() == _selectedAccountId);
+    final rate = ref.read(rateProvider).rates.firstWhereOrNull(
+            (c) => c.currencyId.toString() == _selectedRateId);
+    final account = ref.read(accountProvider).accounts.firstWhereOrNull(
+            (c) => c.id.toString() == _selectedAccountId);
 
-      if (rate == null || account == null) {
-        showCustomSnackBar(
-            scaffoldMessenger: scaffoldMessenger,
-            message: 'La tasa o la cuenta seleccionada ya no son válidas.',
-            type: SnackBarType.error);
-        return;
-      }
-
-      Remittance remittanceToSave;
-
-      if (_remittance == null) {
-        remittanceToSave = Remittance(
-            customer: customer,
-            amount: amount,
-            code: code,
-            createdAt: createDate,
-            state: 'waiting',
-            currencyId: rate.currencyId,
-            currencyName: rate.name,
-            currencySymbol: rate.symbol,
-            rate: rate.rate,
-            bankAccountId: account.id!,
-            bankAccountName: account.name,
-            bankName: account.bankName
-        );
-        await ref.read(remittanceProvider.notifier).addRemittance(remittanceToSave);
-      } else {
-        remittanceToSave = _remittance!.copyWith(
-            customer: customer,
-            amount: amount,
-            code: code,
-            createdAt: createDate,
-            currencyId: rate.currencyId,
-            currencyName: rate.name,
-            currencySymbol: rate.symbol,
-            rate: rate.rate,
-            bankAccountId: account.id!,
-            bankAccountName: account.name,
-            bankName: account.bankName
-        );
-        await ref.read(remittanceProvider.notifier).editRemittance(remittanceToSave);
-      }
-
+    if (rate == null || account == null) {
       showCustomSnackBar(
           scaffoldMessenger: scaffoldMessenger,
-          message: AppRecordMessages.registerSuccess,
-          type: SnackBarType.success);
-
-      if (context.canPop()) {
-        context.pop();
-      } else {
-        context.go(goBackLocation);
-      }
-    } on OdooException catch (e) {
-      showCustomSnackBar(
-          scaffoldMessenger: scaffoldMessenger,
-          message: e.message,
+          message: 'La tasa o la cuenta seleccionada ya no son válidas.',
           type: SnackBarType.error);
-    } catch (e) {
-      showCustomSnackBar(
-          scaffoldMessenger: scaffoldMessenger,
-          message: 'Ocurrió un error inesperado.',
-          type: SnackBarType.error);
+      return;
+    }
+
+    if (_isEditing) {
+      final updateRemittance = widget.remittance!.copyWith(
+          customer: _customerController.text.trim(),
+          amount: double.tryParse(_amountController.text) ?? 0.0,
+          code: _codeController.text.trim(),
+          createdAt: HumanFormats.toDateTime('${_dateController.text} ${_timeController.text}'),
+          currencyId: rate.currencyId,
+          currencyName: rate.name,
+          currencySymbol: rate.symbol,
+          rate: rate.rate,
+          bankAccountId: account.id!,
+          bankAccountName: account.name,
+          bankName: account.bankName
+      );
+      await ref.read(remittanceProvider.notifier).editRemittance(updateRemittance);
+    } else {
+      final remittanceToSave = Remittance(
+          customer: customer,
+          amount: amount,
+          code: code,
+          createdAt: createDate,
+          state: 'waiting',
+          currencyId: rate.currencyId,
+          currencyName: rate.name,
+          currencySymbol: rate.symbol,
+          rate: rate.rate,
+          bankAccountId: account.id!,
+          bankAccountName: account.name,
+          bankName: account.bankName
+      );
+      await ref.read(remittanceProvider.notifier).addRemittance(remittanceToSave);
     }
   }
 
@@ -275,7 +234,8 @@ class _RemittanceForm extends ConsumerWidget {
   final ValueChanged<String?> onAccountChanged;
   final String? selectedRateId;
   final String? selectedAccountId;
-  final Remittance? remittance;
+  final bool isEditing;
+  final bool isSaving;
 
   const _RemittanceForm({
     required this.formKey,
@@ -287,9 +247,10 @@ class _RemittanceForm extends ConsumerWidget {
     required this.onSave,
     required this.onAccountChanged,
     required this.onRateChanged,
+    required this.isEditing,
+    required this.isSaving,
     this.selectedAccountId,
-    this.selectedRateId,
-    this.remittance
+    this.selectedRateId
   });
 
   @override
@@ -297,9 +258,6 @@ class _RemittanceForm extends ConsumerWidget {
     final colors = Theme.of(context).colorScheme;
     final rateState = ref.watch(rateProvider);
     final accountState = ref.watch(accountProvider);
-
-    final bool isNewRecord = remittance == null;
-    final String labelButton = isNewRecord ? AppButtons.save : AppButtons.update;
 
     return SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
@@ -321,7 +279,7 @@ class _RemittanceForm extends ConsumerWidget {
                   label: AppFormLabels.customer,
                   controller: customerController,
                   validator: (value) => FormValidators.validateRequired(value),
-                  enabled: isNewRecord,
+                  enabled: !isEditing,
                   isRequired: true
                 ),
 
@@ -334,7 +292,7 @@ class _RemittanceForm extends ConsumerWidget {
                         label: AppFormLabels.amount,
                         controller: amountController,
                         validator: (value) => FormValidators.validateDouble(value),
-                        enabled: isNewRecord,
+                        enabled: !isEditing,
                         isRequired: true
                       )
                     ),
@@ -343,7 +301,7 @@ class _RemittanceForm extends ConsumerWidget {
                       child: CustomTextFormField(
                         label: AppFormLabels.code,
                         controller: codeController,
-                        enabled: isNewRecord
+                        enabled: !isEditing
                       )
                     )
                   ]
@@ -358,7 +316,7 @@ class _RemittanceForm extends ConsumerWidget {
                         label: AppFormLabels.date,
                         controller: dateController,
                         validator: (value) => FormValidators.validateRequired(value),
-                        enabled: isNewRecord,
+                        enabled: !isEditing,
                         isRequired: true
                       )
                     ),
@@ -368,7 +326,7 @@ class _RemittanceForm extends ConsumerWidget {
                         label: AppFormLabels.time,
                         controller: timeController,
                         validator: (value) => FormValidators.validateRequired(value),
-                        enabled: isNewRecord,
+                        enabled: !isEditing,
                         isRequired: true
                       )
                     )
@@ -386,9 +344,11 @@ class _RemittanceForm extends ConsumerWidget {
                 const SizedBox(height: 40),
 
                 FilledButton.tonalIcon(
-                    onPressed: onSave,
+                    onPressed: isSaving ? null : onSave,
                     icon: const Icon(Icons.save),
-                    label: Text(labelButton)
+                    label: isSaving
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                        : Text(AppButtons.save)
                 )
               ]
             )

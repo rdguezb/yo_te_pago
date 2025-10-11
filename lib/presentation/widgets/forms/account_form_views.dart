@@ -1,39 +1,36 @@
-import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:yo_te_pago/business/config/constants/app_record_messages.dart';
+import 'package:yo_te_pago/business/config/constants/app_messages.dart';
 import 'package:yo_te_pago/business/config/constants/app_routes.dart';
 import 'package:yo_te_pago/business/config/constants/app_validation.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
-import 'package:yo_te_pago/business/domain/entities/account.dart';
-import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
 import 'package:yo_te_pago/business/providers/accounts_provider.dart';
 import 'package:yo_te_pago/business/providers/bank_accounts_provider.dart';
 import 'package:yo_te_pago/business/providers/deliveries_provider.dart';
-import 'package:yo_te_pago/presentation/routes/app_router.dart';
 import 'package:yo_te_pago/presentation/widgets/input/dropdown_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 
 
-class BankAccountFormView extends ConsumerStatefulWidget {
+class AccountFormView extends ConsumerStatefulWidget {
 
-  static const name = 'account';
+  static const name = AppRoutes.account;
 
-  const BankAccountFormView({
+  const AccountFormView({
     super.key
   });
 
   @override
-  ConsumerState<BankAccountFormView> createState() => _BankAccountFormViewState();
+  ConsumerState<AccountFormView> createState() => _AccountFormViewState();
 
 }
 
-class _BankAccountFormViewState extends ConsumerState<BankAccountFormView> {
+class _AccountFormViewState extends ConsumerState<AccountFormView> {
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
   String? _selectedAccountId;
   String? _selectedDeliveryId;
 
@@ -53,45 +50,58 @@ class _BankAccountFormViewState extends ConsumerState<BankAccountFormView> {
 
   @override
   Widget build(BuildContext context) {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     final bankAccountState = ref.watch(bankAccountProvider);
     final deliveryState = ref.watch(deliveryProvider);
+    final accountState = ref.watch(accountProvider);
 
-    final goBackLocation = ref.read(appRouterProvider).namedLocation(AppRoutes.home, pathParameters: {'page': '3'});
+    ref.listen(accountProvider, (previous, next) {
+      if (next.errorMessage != null && next.errorMessage != previous?.errorMessage) {
+        showCustomSnackBar(
+            scaffoldMessenger: scaffoldMessenger,
+            message: next.errorMessage!,
+            type: SnackBarType.error
+        );
+      }
+      if (next.lastUpdateSuccess && previous?.lastUpdateSuccess == false) {
+        showCustomSnackBar(
+            scaffoldMessenger: scaffoldMessenger,
+            message: AppMessages.operationSuccess,
+            type: SnackBarType.success
+        );
+        if (context.canPop()) context.pop();
+      }
+    });
 
     return Scaffold(
         appBar: AppBar(
             title: Text(AppTitles.bankAccountLink),
-            centerTitle: true,
-            leading: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                onPressed: () => context.canPop() ? context.pop() : context.go(goBackLocation)
-            )
+            centerTitle: true
         ),
         body: SafeArea(
             child: (bankAccountState.isLoading || deliveryState.isLoading)
                 ? const Center(child: CircularProgressIndicator())
-                : _BankAccountForm(
-                formKey: _formKey,
-                onAccountChanged: (value) => setState(() => _selectedAccountId = value),
-                onDeliveryChanged: (value) => setState(() => _selectedDeliveryId = value),
-                selectedAccountId: _selectedAccountId,
-                selectedDeliveryId: _selectedDeliveryId,
-                onSave: _saveAccount
-            )
+                : _AccountForm(
+                      formKey: _formKey,
+                      onAccountChanged: (value) => setState(() => _selectedAccountId = value),
+                      onDeliveryChanged: (value) => setState(() => _selectedDeliveryId = value),
+                      selectedAccountId: _selectedAccountId,
+                      selectedDeliveryId: _selectedDeliveryId,
+                      isSaving: accountState.isLoading,
+                      onSave: _saveAccount
+                  )
         )
     );
   }
 
   Future<void> _saveAccount() async {
-    if (!mounted) return;
     final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final goBackLocation = ref.read(appRouterProvider).namedLocation(AppRoutes.home, pathParameters: {'page': '3'});
 
     final form = _formKey.currentState;
     if (form == null || !form.validate()) {
       showCustomSnackBar(
           scaffoldMessenger: scaffoldMessenger,
-          message: AppRecordMessages.formHasErrors,
+          message: AppMessages.formHasErrors,
           type: SnackBarType.warning);
       return;
     }
@@ -104,57 +114,23 @@ class _BankAccountFormViewState extends ConsumerState<BankAccountFormView> {
       return;
     }
 
-    try {
-      final account = ref.read(bankAccountProvider).bankAccounts.firstWhereOrNull(
-              (c) => c.id.toString() == _selectedAccountId);
-      final delivery = ref.read(deliveryProvider).deliveries.firstWhereOrNull(
-              (c) => c.id.toString() == _selectedDeliveryId);
+    final accountId = int.tryParse(_selectedAccountId!);
+    final deliveryId = int.tryParse(_selectedDeliveryId!);
 
-      if (account == null || delivery == null) {
-        showCustomSnackBar(
-            scaffoldMessenger: scaffoldMessenger,
-            message: 'La cuenta de banco o remesero seleccionado ya no son válidos.',
-            type: SnackBarType.error);
-        return;
-      }
-
-      final accountToSave = Account(
-          id: account.id,
-          name: account.name,
-          bankName: account.bankName,
-          partnerId: delivery.id,
-          partnerName: delivery.name
-      );
-
-      await ref.read(accountProvider.notifier).linkAccount(accountToSave);
-
+    if (accountId == null || deliveryId == null) {
       showCustomSnackBar(
           scaffoldMessenger: scaffoldMessenger,
-          message: AppRecordMessages.registerSuccess,
-          type: SnackBarType.success);
-      
-      if (context.canPop()) {
-        context.pop();
-      } else {
-        context.go(goBackLocation);
-      }
-    } on OdooException catch (e) {
-      showCustomSnackBar(
-          scaffoldMessenger: scaffoldMessenger,
-          message: e.message,
+          message: 'La cuenta de banco o remesero seleccionado no son válidos.',
           type: SnackBarType.error);
-    } catch (e) {
-      print('Error: $e');
-      showCustomSnackBar(
-          scaffoldMessenger: scaffoldMessenger,
-          message: 'Ocurrió un error inesperado al asociar la cuenta bancaria.',
-          type: SnackBarType.error);
+      return;
     }
+
+    await ref.read(accountProvider.notifier).linkAccount(deliveryId, accountId);
   }
 
 }
 
-class _BankAccountForm extends ConsumerWidget {
+class _AccountForm extends ConsumerWidget {
 
   final GlobalKey<FormState> formKey;
   final VoidCallback onSave;
@@ -162,14 +138,16 @@ class _BankAccountForm extends ConsumerWidget {
   final ValueChanged<String?> onDeliveryChanged;
   final String? selectedAccountId;
   final String? selectedDeliveryId;
+  final bool isSaving;
 
-  const _BankAccountForm({
+  const _AccountForm({
     required this.formKey,
     required this.onSave,
     required this.onAccountChanged,
     required this.onDeliveryChanged,
     this.selectedAccountId,
-    this.selectedDeliveryId
+    this.selectedDeliveryId,
+    this.isSaving = false
   });
 
   @override
@@ -203,8 +181,10 @@ class _BankAccountForm extends ConsumerWidget {
                   const SizedBox(height: 40),
 
                   FilledButton.tonalIcon(
-                      onPressed: onSave,
-                      icon: const Icon(Icons.save),
+                      onPressed: isSaving ? null : onSave,
+                      icon: isSaving
+                          ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.save),
                       label: Text(AppButtons.save)
                   )
                 ]
@@ -238,8 +218,8 @@ class _BankAccountForm extends ConsumerWidget {
       return const Center(
         child: Text(
           'No hay remeseros disponibles.',
-          textAlign: TextAlign.center,
-        ),
+          textAlign: TextAlign.center
+        )
       );
     }
 
@@ -283,8 +263,8 @@ class _BankAccountForm extends ConsumerWidget {
       return const Center(
         child: Text(
           'No hay cuentas bancarias sin vincular.',
-          textAlign: TextAlign.center,
-        ),
+          textAlign: TextAlign.center
+        )
       );
     }
 

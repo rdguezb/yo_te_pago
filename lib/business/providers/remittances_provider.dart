@@ -1,7 +1,5 @@
-import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:yo_te_pago/business/config/constants/app_network_states.dart';
 import 'package:yo_te_pago/business/domain/entities/remittance.dart';
 import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
@@ -12,12 +10,14 @@ class RemittanceState {
   final bool isLoading;
   final String? errorMessage;
   final String searchQuery;
+  final bool lastUpdateSuccess;
 
   RemittanceState({
     this.remittances = const [],
     this.isLoading = false,
     this.errorMessage,
-    this.searchQuery = ''
+    this.searchQuery = '',
+    this.lastUpdateSuccess = false
   });
 
   List<Remittance> get filteredRemittances => searchQuery.isEmpty
@@ -31,40 +31,46 @@ class RemittanceState {
     List<Remittance>? remittances,
     bool? isLoading,
     String? errorMessage,
-    String? searchQuery
+    String? searchQuery,
+    bool? lastUpdateSuccess,
+    bool clearError = false
   }) {
+
     return RemittanceState(
       remittances: remittances ?? this.remittances,
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage,
-      searchQuery: searchQuery ?? this.searchQuery
+      errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
+      searchQuery: searchQuery ?? this.searchQuery,
+      lastUpdateSuccess: lastUpdateSuccess ?? this.lastUpdateSuccess
     );
   }
 }
 
 class RemittanceNotifier extends StateNotifier<RemittanceState> {
+
   final Ref _ref;
+  final OdooService _odooService;
 
-  RemittanceNotifier(this._ref) : super(RemittanceState());
+  RemittanceNotifier(this._ref, this._odooService) : super(RemittanceState());
 
-  OdooService _getService() {
-    final odooService = _ref.read(odooServiceProvider);
-    final odooSessionState = _ref.read(odooSessionNotifierProvider);
-
-    if (!odooSessionState.isAuthenticated) {
-      throw OdooException(AppNetworkMessages.errorNoConection);
+  bool _isSessionValid() {
+    if (!_ref.read(odooSessionNotifierProvider).isAuthenticated) {
+      state = state.copyWith(isLoading: false, errorMessage: 'Tu sesión ha expirado.');
+      return false;
     }
-
-    return odooService;
+    return true;
   }
 
   Future<void> _fetchRemittances() async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
+    if (state.remittances.isEmpty) {
+      state = state.copyWith(isLoading: true, clearError: true);
+    } else {
+      state = state.copyWith(clearError: true);
+    }
+
     try {
-      final odooService = _getService();
-      final remittances = await odooService.getRemittances();
-      state = state.copyWith(
-          remittances: remittances, isLoading: false, errorMessage: null);
+      final remittances = await _odooService.getRemittances();
+      state = state.copyWith(remittances: remittances, isLoading: false);
     } on OdooException catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.message);
     } catch (e) {
@@ -74,42 +80,32 @@ class RemittanceNotifier extends StateNotifier<RemittanceState> {
   }
 
   Future<void> _updateRemittanceState(int remittanceId, String action) async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
-
-    final remittance =
-        state.remittances.firstWhereOrNull((r) => r.id == remittanceId);
-    if (remittance == null) {
-      state = state.copyWith(
-          isLoading: false, errorMessage: "Error: No se encontró la remesa.");
-      return;
-    }
+    state = state.copyWith(isLoading: true, clearError: true, lastUpdateSuccess: false);
 
     try {
       bool success = false;
-      final odooService = _getService();
 
       if (action == 'confirm') {
-        success = await odooService.confirmRemittance(remittance);
+        success = await _odooService.confirmRemittance(remittanceId);
       } else if (action == 'pay') {
-        success = await odooService.payRemittance(remittance);
+        success = await _odooService.payRemittance(remittanceId);
       }
 
       if (success) {
-        final newState = action == 'confirm' ? 'confirmed' : 'paid';
-        final index =
-            state.remittances.indexWhere((r) => r.id == remittanceId);
+        final updatedList = List<Remittance>.from(state.remittances);
+        final index = updatedList.indexWhere((r) => r.id == remittanceId);
+
         if (index != -1) {
-          final updatedList = List<Remittance>.from(state.remittances);
+          final remittance = updatedList[index];
+          final newState = (action == 'confirm') ? 'confirmed' : 'paid';
+
           updatedList[index] = remittance.copyWith(state: newState);
-          state = state.copyWith(
-              isLoading: false, remittances: updatedList, errorMessage: null);
-        } else {
-          await _fetchRemittances();
         }
+
+        state = state.copyWith(isLoading: false, remittances: updatedList, lastUpdateSuccess: true);
       } else {
         state = state.copyWith(
-            isLoading: false,
-            errorMessage: "La operación no se pudo completar en el servidor.");
+            isLoading: false, errorMessage: 'La operación no se pudo completar en el servidor.');
       }
     } on OdooException catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.message);
@@ -120,19 +116,21 @@ class RemittanceNotifier extends StateNotifier<RemittanceState> {
   }
 
   Future<void> loadRemittances() async {
+    if (!_isSessionValid()) return;
     if (state.remittances.isNotEmpty) return;
     await _fetchRemittances();
   }
 
   Future<void> addRemittance(Remittance remittance) async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
-    try {
-      final odooService = _getService();
-      final newRemittance = await odooService.addRemittance(remittance);
+    if (!_isSessionValid()) return;
 
-      state = state.copyWith(
-          isLoading: false,
-          remittances: [newRemittance, ...state.remittances]);
+    state = state.copyWith(isLoading: true, clearError: true, lastUpdateSuccess: false);
+    try {
+      final newRemittance = await _odooService.addRemittance(remittance);
+
+      final updatedList = [newRemittance, ...state.remittances];
+
+      state = state.copyWith(isLoading: false, lastUpdateSuccess: true, remittances: updatedList);
     } on OdooException catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.message);
     } catch (e) {
@@ -143,60 +141,56 @@ class RemittanceNotifier extends StateNotifier<RemittanceState> {
   }
 
   Future<void> editRemittance(Remittance remittance) async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
+    if (!_isSessionValid()) return;
+
+    state = state.copyWith(isLoading: true, clearError: true, lastUpdateSuccess: false);
     try {
-      bool success = false;
-      final odooService = _getService();
-      success = await odooService.editRemittance(remittance);
+      final success = await _odooService.editRemittance(remittance);
 
       if (success) {
-        final index =
-            state.remittances.indexWhere((r) => r.id == remittance.id);
+        final updatedList = List<Remittance>.from(state.remittances);
+        final index = updatedList.indexWhere((r) => r.id == remittance.id);
+
         if (index != -1) {
-          final updatedList = List<Remittance>.from(state.remittances);
           updatedList[index] = remittance;
-          state = state.copyWith(isLoading: false, remittances: updatedList);
-        } else {
-          await _fetchRemittances();
         }
+
+        state = state.copyWith(isLoading: false, remittances: updatedList, lastUpdateSuccess: true);
       } else {
         state = state.copyWith(
-            isLoading: false,
-            errorMessage: "La operación no se pudo completar en el servidor.");
+            isLoading: false, errorMessage: 'La operación no se pudo completar en el servidor.');
       }
     } on OdooException catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.message);
     } catch (e) {
       state = state.copyWith(
-          isLoading: false,
-          errorMessage: 'Ocurrió un error inesperado al editar.');
+          isLoading: false, errorMessage: 'Ocurrió un error inesperado al editar.');
     }
   }
 
   Future<void> confirmRemittance(int remittanceId) async {
+    if (!_isSessionValid()) return;
     await _updateRemittanceState(remittanceId, 'confirm');
   }
 
   Future<void> payRemittance(int remittanceId) async {
+    if (!_isSessionValid()) return;
     await _updateRemittanceState(remittanceId, 'pay');
   }
 
   Future<void> deleteRemittance(int remittanceId) async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
+    if (!_isSessionValid()) return;
+
+    state = state.copyWith(isLoading: true, clearError: true, lastUpdateSuccess: false);
     try {
-      bool success = false;
-      final odooService = _getService();
-      success = await odooService.deleteRemittance(remittanceId);
+      final success = await _odooService.deleteRemittance(remittanceId);
 
       if (success) {
-        final updatedList =
-            state.remittances.where((r) => r.id != remittanceId).toList();
-        state =
-            state.copyWith(isLoading: false, remittances: updatedList);
+        final updatedList = state.remittances.where((r) => r.id != remittanceId).toList();
+        state = state.copyWith(isLoading: false, lastUpdateSuccess: true, remittances: updatedList);
       } else {
         state = state.copyWith(
-            isLoading: false,
-            errorMessage: "La operación no se pudo completar en el servidor.");
+            isLoading: false, errorMessage: 'La operación no se pudo completar en el servidor.');
       }
     } on OdooException catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.message);
@@ -212,11 +206,13 @@ class RemittanceNotifier extends StateNotifier<RemittanceState> {
   }
 
   Future<void> refreshRemittances() async {
+    if (!_isSessionValid()) return;
     await _fetchRemittances();
   }
 }
 
-final remittanceProvider =
-    StateNotifierProvider<RemittanceNotifier, RemittanceState>((ref) {
-  return RemittanceNotifier(ref);
+final remittanceProvider = StateNotifierProvider<RemittanceNotifier, RemittanceState>((ref) {
+  final odooService = ref.watch(odooServiceProvider);
+
+  return RemittanceNotifier(ref, odooService);
 });

@@ -1,36 +1,34 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:yo_te_pago/business/domain/entities/account.dart';
+import 'package:yo_te_pago/business/domain/entities/bank.dart';
 import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/infrastructure/services/odoo_services.dart';
 
 
-class AccountState {
-
-  final List<Account> accounts;
+class BankState {
+  final List<Bank> banks;
   final bool isLoading;
   final String? errorMessage;
   final String searchQuery;
   final bool lastUpdateSuccess;
 
-  AccountState({
-    this.accounts = const [],
+  BankState({
+    this.banks = const [],
     this.isLoading = false,
     this.errorMessage,
     this.searchQuery = '',
     this.lastUpdateSuccess = false
   });
 
-  List<Account> get filteredAccounts => searchQuery.isEmpty
-      ? accounts
-      : accounts
-      .where((r) =>
-        (r.partnerName ?? '').toLowerCase().contains(searchQuery.toLowerCase()))
+  List<Bank> get filteredBanks => searchQuery.isEmpty
+      ? banks
+      : banks
+      .where((b) => (b.name).toLowerCase().contains(searchQuery.toLowerCase()))
       .toList();
 
-  AccountState copyWith({
-    List<Account>? accounts,
+  BankState copyWith({
+    List<Bank>? banks,
     bool? isLoading,
     String? errorMessage,
     String? searchQuery,
@@ -38,8 +36,8 @@ class AccountState {
     bool clearError = false
   }) {
 
-    return AccountState(
-        accounts: accounts ?? this.accounts,
+    return BankState(
+        banks: banks ?? this.banks,
         isLoading: isLoading ?? this.isLoading,
         errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
         searchQuery: searchQuery ?? this.searchQuery,
@@ -48,13 +46,12 @@ class AccountState {
   }
 }
 
-
-class AccountNotifier extends StateNotifier<AccountState> {
+class BankNotifier extends StateNotifier<BankState> {
 
   final Ref _ref;
   final OdooService _odooService;
 
-  AccountNotifier(this._ref, this._odooService) : super(AccountState());
+  BankNotifier(this._ref, this._odooService) : super(BankState());
 
   bool _isSessionValid() {
     if (!_ref.read(odooSessionNotifierProvider).isAuthenticated) {
@@ -64,48 +61,74 @@ class AccountNotifier extends StateNotifier<AccountState> {
     return true;
   }
 
-  Future<void> _fetchAccounts() async {
-    if (state.accounts.isEmpty) {
+  Future<void> _fetchBanks() async {
+    if (state.banks.isEmpty) {
       state = state.copyWith(isLoading: true, clearError: true);
     } else {
       state = state.copyWith(clearError: true);
     }
+
     try {
-      final accounts = await _odooService.getAccounts();
-      state = state.copyWith(accounts: accounts, isLoading: false);
+      final banks = await _odooService.getBanks();
+      state = state.copyWith(banks: banks, isLoading: false);
     } on OdooException catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.message);
     } catch (e) {
       state = state.copyWith(
-          isLoading: false, errorMessage: 'Ocurrió un error inesperado.');
+          isLoading: false, errorMessage: 'Ocurrió un error inesperado al cargar los bancos.');
     }
   }
 
-  Future<void> loadAccounts() async {
+  Future<void> loadBanks() async {
     if (!_isSessionValid()) return;
-    if (state.accounts.isNotEmpty) return;
-    await _fetchAccounts();
+    if (state.banks.isNotEmpty) return;
+    await _fetchBanks();
+  }
+
+  Future<void> refreshBanks() async {
+    if (!_isSessionValid()) return;
+    await _fetchBanks();
   }
 
   void setSearchQuery(String query) {
     state = state.copyWith(searchQuery: query);
   }
 
-  Future<void> refreshAccounts() async {
-    if (!_isSessionValid()) return;
-    await _fetchAccounts();
-  }
-  
-  Future<void> deleteAccount(Account account) async {
+  Future<void> addBank(Bank bank) async {
     if (!_isSessionValid()) return;
 
     state = state.copyWith(isLoading: true, clearError: true, lastUpdateSuccess: false);
     try {
-      final success = await _odooService.deleteAccount(account.partnerId!, account.id!);
+      final newBank = await _odooService.addBank(bank);
+
+      final updatedList = [newBank, ...state.banks];
+
+      state = state.copyWith(isLoading: false, lastUpdateSuccess: true, banks: updatedList);
+    } on OdooException catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: e.message);
+    } catch (e) {
+      state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'Ocurrió un error inesperado al agregar el banco.');
+    }
+  }
+
+  Future<void> updateBank(Bank bank) async {
+    if (!_isSessionValid()) return;
+
+    state = state.copyWith(isLoading: true, clearError: true, lastUpdateSuccess: false);
+    try {
+      final success = await _odooService.updateBank(bank);
 
       if (success) {
-        final updatedList = state.accounts.where((a) => a.id != account.id).toList();
-        state = state.copyWith(isLoading: false, lastUpdateSuccess: true, accounts: updatedList);
+        final updatedList = List<Bank>.from(state.banks);
+        final index = updatedList.indexWhere((b) => b.id == bank.id);
+
+        if (index != -1) {
+          updatedList[index] = bank;
+        }
+
+        state = state.copyWith(isLoading: false, banks: updatedList, lastUpdateSuccess: true);
       } else {
         state = state.copyWith(
             isLoading: false, errorMessage: 'La operación no se pudo completar en el servidor.');
@@ -114,37 +137,13 @@ class AccountNotifier extends StateNotifier<AccountState> {
       state = state.copyWith(isLoading: false, errorMessage: e.message);
     } catch (e) {
       state = state.copyWith(
-          isLoading: false, errorMessage: 'Ocurrió un error inesperado al desasociar.');
+          isLoading: false, errorMessage: 'Ocurrió un error inesperado al editar el banco.');
     }
   }
-
-  Future<void> linkAccount(int partnerId, int accountId) async {
-    if (!_isSessionValid()) return;
-
-    state = state.copyWith(isLoading: true, clearError: true, lastUpdateSuccess: false);
-    try {
-      final success = await _odooService.linkAccount(partnerId, accountId);
-
-      if (success) {
-        state = state.copyWith(isLoading: false, lastUpdateSuccess: true);
-
-        await _fetchAccounts();
-      } else {
-        state = state.copyWith(
-            isLoading: false, errorMessage: 'La operación no se pudo completar en el servidor.');
-      }
-    } on OdooException catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: e.message);
-    } catch (e) {
-      state = state.copyWith(
-          isLoading: false, errorMessage: 'Ocurrió un error inesperado al asociar.');
-    }
-  }
-
 }
 
-final accountProvider = StateNotifierProvider<AccountNotifier, AccountState>((ref) {
+final bankProvider = StateNotifierProvider<BankNotifier, BankState>((ref) {
   final odooService = ref.watch(odooServiceProvider);
 
-  return AccountNotifier(ref, odooService);
+  return BankNotifier(ref, odooService);
 });

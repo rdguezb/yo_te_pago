@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
 import 'package:yo_te_pago/business/config/constants/app_general_states.dart';
+import 'package:yo_te_pago/business/config/constants/app_routes.dart';
 
 
 class LoadingScreen extends StatelessWidget {
 
-  static const name = 'loading';
+  static const name = AppRoutes.loading;
 
   const LoadingScreen({super.key});
 

@@ -1,22 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:yo_te_pago/business/config/constants/app_remittance_states.dart';
 import 'package:yo_te_pago/business/config/constants/app_roles.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/domain/entities/account.dart';
 import 'package:yo_te_pago/business/providers/accounts_provider.dart';
-import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/confirm_modal_dialog.dart';
 
 
-class BankAccountTile extends ConsumerWidget {
+class AccountTile extends ConsumerWidget {
 
   final Account account;
   final String? role;
 
-  const BankAccountTile({
+  const AccountTile({
     super.key,
     required this.account,
     this.role
@@ -55,7 +53,7 @@ class BankAccountTile extends ConsumerWidget {
                           IconButton(
                               icon: const Icon(Icons.delete_outline_sharp),
                               color: colors.error,
-                              onPressed: () => _onDeleteAccount(context, ref))
+                              onPressed: () => _onUnlinkAccount(context, ref))
                         ]
                     )
                   : null,
@@ -64,7 +62,7 @@ class BankAccountTile extends ConsumerWidget {
     );
   }
 
-  Future<void> _onDeleteAccount(BuildContext context, WidgetRef ref) async {
+  Future<void> _onUnlinkAccount(BuildContext context, WidgetRef ref) async {
     final bool confirm = await showDialog(
       context: context,
       builder: (context) => ConfirmModalDialog(
@@ -77,24 +75,7 @@ class BankAccountTile extends ConsumerWidget {
 
     if (!confirm) return;
 
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-    try {
-      await ref.read(accountProvider.notifier).deleteAccount(account);
-
-      showCustomSnackBar(
-          scaffoldMessenger: scaffoldMessenger,
-          message: AppRemittanceMessages.accountDeletedSuccess,
-          type: SnackBarType.success
-      );
-    } catch (e) {
-      showCustomSnackBar(
-          scaffoldMessenger: scaffoldMessenger,
-          message: e.toString(),
-          type: SnackBarType.error
-      );
-    }
-
+    await ref.read(accountProvider.notifier).deleteAccount(account);
   }
 
 }

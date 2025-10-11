@@ -27,6 +27,22 @@ class FormValidators {
     return null;
   }
 
+  static String? validateInt(String? value, {String? errorMessage}) {
+    if (value == null || value.trim().isEmpty) {
+      return errorMessage ?? AppValidationMessages.required;
+    }
+
+    final number = int.tryParse(value);
+    if (number == null) {
+      return AppValidationMessages.invalidNumber;
+    }
+    if (number <= 0) {
+      return AppValidationMessages.positiveNumber;
+    }
+
+    return null;
+  }
+
   static String? validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
       return AppValidationMessages.required;

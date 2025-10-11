@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:yo_te_pago/business/config/constants/app_network_states.dart';
 import 'package:yo_te_pago/business/domain/entities/rate.dart';
 import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
@@ -12,12 +11,14 @@ class RateState {
   final bool isLoading;
   final String? errorMessage;
   final String searchQuery;
+  final bool lastUpdateSuccess;
 
   RateState({
     this.rates = const [],
     this.isLoading = false,
     this.errorMessage,
-    this.searchQuery = ''
+    this.searchQuery = '',
+    this.lastUpdateSuccess = false
   });
 
   List<Rate> get filteredRates => searchQuery.isEmpty
@@ -32,13 +33,18 @@ class RateState {
     List<Rate>? rates,
     bool? isLoading,
     String? errorMessage,
-    String? searchQuery
+    String? searchQuery,
+    bool? lastUpdateSuccess,
+    bool clearError = false
   }) {
+
     return RateState(
       rates: rates ?? this.rates,
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage,
-      searchQuery: searchQuery ?? this.searchQuery);
+      errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
+      searchQuery: searchQuery ?? this.searchQuery,
+      lastUpdateSuccess: lastUpdateSuccess ?? this.lastUpdateSuccess
+    );
   }
 }
 
@@ -46,136 +52,105 @@ class RateState {
 class RateNotifier extends StateNotifier<RateState> {
 
   final Ref _ref;
+  final OdooService _odooService;
 
-  RateNotifier(this._ref) : super(RateState());
+  RateNotifier(this._ref, this._odooService) : super(RateState());
 
-  OdooService _getService() {
-    final odooService = _ref.read(odooServiceProvider);
-    final odooSessionState = _ref.read(odooSessionNotifierProvider);
-
-    if (!odooSessionState.isAuthenticated) {
-      throw OdooException(AppNetworkMessages.errorNoConection);
+  bool _isSessionValid() {
+    if (!_ref.read(odooSessionNotifierProvider).isAuthenticated) {
+      state = state.copyWith(isLoading: false, errorMessage: 'Tu sesión ha expirado.');
+      return false;
     }
-
-    return odooService;
+    return true;
   }
 
   Future<void> _fetchRates() async {
-    state = state.copyWith(
-        isLoading: true,
-        errorMessage: null);
+    if (state.rates.isEmpty) {
+      state = state.copyWith(isLoading: true, clearError: true);
+    } else {
+      state = state.copyWith(clearError: true);
+    }
+
     try {
-      final odooService = _getService();
-      final rates = await odooService.getRates();
-      state = state.copyWith(
-          rates: rates,
-          isLoading: false,
-          errorMessage: null
-      );
+      final rates = await _odooService.getRates();
+      state = state.copyWith(rates: rates, isLoading: false);
     } on OdooException catch (e) {
-      state = state.copyWith(
-          isLoading: false,
-          errorMessage: e.message);
+      state = state.copyWith(isLoading: false, errorMessage: e.message);
     } catch (e) {
       state = state.copyWith(
-          isLoading: false,
-          errorMessage: 'Ocurrió un error inesperado.');
+          isLoading: false, errorMessage: 'Ocurrió un error inesperado.');
     }
   }
 
   Future<void> loadRates() async {
+    if (!_isSessionValid()) return;
     if (state.rates.isNotEmpty) return;
     await _fetchRates();
   }
 
   Future<void> addRate(Rate rate) async {
-    state = state.copyWith(
-        isLoading: true,
-        errorMessage: null);
-    try {
-      final odooService = _getService();
-      final newRate = await odooService.addRate(rate);
+    if (!_isSessionValid()) return;
 
-      state = state.copyWith(
-          isLoading: false,
-          rates: [newRate, ...state.rates]);
+    state = state.copyWith(isLoading: true, clearError: true, lastUpdateSuccess: false);
+    try {
+      final newRate = await _odooService.addRate(rate);
+
+      final updatedList = [newRate, ...state.rates];
+
+      state = state.copyWith(isLoading: false, lastUpdateSuccess: true, rates: updatedList);
     } on OdooException catch (e) {
-      state = state.copyWith(
-          isLoading: false,
-          errorMessage: e.message);
+      state = state.copyWith(isLoading: false, errorMessage: e.message);
     } catch (e) {
       state = state.copyWith(
-          isLoading: false,
-          errorMessage: 'Ocurrió un error inesperado al agregar.');
+          isLoading: false, errorMessage: 'Ocurrió un error inesperado al agregar.');
     }
   }
 
   Future<void> changeRate(Rate rate) async {
-    state = state.copyWith(
-        isLoading: true,
-        errorMessage: null);
+    if (!_isSessionValid()) return;
+
+    state = state.copyWith(isLoading: true, clearError: true, lastUpdateSuccess: false);
     try {
-      bool success = false;
-      final odooService = _getService();
-      success = await odooService.changeRate(rate);
+      final success = await _odooService.changeRate(rate);
 
       if (success) {
-        final index = state.rates
-            .indexWhere((r) => r.id == rate.id);
+        final updatedList = List<Rate>.from(state.rates);
+        final index = updatedList.indexWhere((r) => r.id == rate.id);
+
         if (index != -1) {
-          final updatedList = List<Rate>.from(state.rates);
           updatedList[index] = rate;
-          state = state.copyWith(
-              isLoading: false,
-              rates: updatedList);
-        } else {
-          await _fetchRates();
         }
+
+        state = state.copyWith(isLoading: false, lastUpdateSuccess: true, rates: updatedList);
       } else {
         state = state.copyWith(
-            isLoading: false,
-            errorMessage: "La operación no se pudo completar en el servidor.");
+            isLoading: false, errorMessage: 'La operación no se pudo completar en el servidor.');
       }
     } on OdooException catch (e) {
-      state = state.copyWith(
-          isLoading: false,
-          errorMessage: e.message);
+      state = state.copyWith(isLoading: false, errorMessage: e.message);
     } catch (e) {
-      state = state.copyWith(
-          isLoading: false,
-          errorMessage: 'Ocurrió un error inesperado al editar.');
+      state = state.copyWith(isLoading: false, errorMessage: 'Ocurrió un error inesperado al editar.');
     }
   }
 
   Future<void> deleteRate(int rateId) async {
-    state = state.copyWith(
-        isLoading: true,
-        errorMessage: null);
+    if (!_isSessionValid()) return;
+
+    state = state.copyWith(isLoading: true, clearError: true, lastUpdateSuccess: false);
     try {
-      bool success = false;
-      final odooService = _getService();
-      success = await odooService.deleteRate(rateId);
+      final success = await _odooService.deleteRate(rateId);
 
       if (success) {
-        final updatedList = state.rates
-            .where((r) => r.id != rateId).toList();
-        state = state.copyWith(
-            isLoading: false,
-            rates: updatedList);
+        final updatedList = state.rates.where((r) => r.id != rateId).toList();
+        state = state.copyWith(isLoading: false, lastUpdateSuccess: true, rates: updatedList);
       } else {
         state = state.copyWith(
-            isLoading: false,
-            errorMessage: "La operación no se pudo completar en el servidor.");
+            isLoading: false, errorMessage: 'La operación no se pudo completar en el servidor.');
       }
     } on OdooException catch (e) {
-      state = state.copyWith(
-          isLoading: false,
-          errorMessage: e.message);
+      state = state.copyWith(isLoading: false, errorMessage: e.message);
     } catch (e) {
-      state = state.copyWith(
-          isLoading: false,
-          errorMessage: 'Ocurrió un error inesperado al eliminar.');
-
+      state = state.copyWith(isLoading: false, errorMessage: 'Ocurrió un error inesperado al eliminar.');
     }
   }
 
@@ -184,6 +159,7 @@ class RateNotifier extends StateNotifier<RateState> {
   }
 
   Future<void> refreshRates() async {
+    if (!_isSessionValid()) return;
     await _fetchRates();
   }
 
@@ -191,6 +167,7 @@ class RateNotifier extends StateNotifier<RateState> {
 
 
 final rateProvider = StateNotifierProvider<RateNotifier, RateState>((ref) {
+  final odooService = ref.watch(odooServiceProvider);
 
-  return RateNotifier(ref);
+  return RateNotifier(ref, odooService);
 });

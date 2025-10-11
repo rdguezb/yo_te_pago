@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:yo_te_pago/business/config/constants/app_network_states.dart';
 import 'package:yo_te_pago/business/domain/entities/balance.dart';
 import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
@@ -12,12 +11,14 @@ class BalanceState {
   final bool isLoading;
   final String? errorMessage;
   final String searchQuery;
+  final bool lastUpdateSuccess;
 
   BalanceState({
     this.balances = const [],
     this.isLoading = false,
     this.errorMessage,
-    this.searchQuery = ''
+    this.searchQuery = '',
+    this.lastUpdateSuccess = false
   });
 
   List<Balance> get filteredBalances => searchQuery.isEmpty
@@ -31,13 +32,18 @@ class BalanceState {
     List<Balance>? balances,
     bool? isLoading,
     String? errorMessage,
-    String? searchQuery
+    String? searchQuery,
+    bool? lastUpdateSuccess,
+    bool clearError = false
   }) {
+
     return BalanceState(
         balances: balances ?? this.balances,
         isLoading: isLoading ?? this.isLoading,
-        errorMessage: errorMessage,
-        searchQuery: searchQuery ?? this.searchQuery);
+        errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
+        searchQuery: searchQuery ?? this.searchQuery,
+        lastUpdateSuccess: lastUpdateSuccess ?? this.lastUpdateSuccess
+    );
   }
 }
 
@@ -45,43 +51,39 @@ class BalanceState {
 class BalanceNotifier extends StateNotifier<BalanceState> {
 
   final Ref _ref;
+  final OdooService _odooService;
 
-  BalanceNotifier(this._ref) : super(BalanceState());
+  BalanceNotifier(this._ref, this._odooService) : super(BalanceState());
 
-  OdooService _getService() {
-    final odooService = _ref.read(odooServiceProvider);
-    final odooSessionState = _ref.read(odooSessionNotifierProvider);
-
-    if (!odooSessionState.isAuthenticated) {
-      throw OdooException(AppNetworkMessages.errorNoConection);
+  bool _isSessionValid() {
+    if (!_ref.read(odooSessionNotifierProvider).isAuthenticated) {
+      state = state.copyWith(isLoading: false, errorMessage: 'Tu sesión ha expirado.');
+      return false;
     }
 
-    return odooService;
+    return true;
   }
 
   Future<void> _fetchBalances() async {
-    state = state.copyWith(
-        isLoading: true,
-        errorMessage: null);
+    if (state.balances.isEmpty) {
+      state = state.copyWith(isLoading: true, clearError: true);
+    } else {
+      state = state.copyWith(clearError: true);
+    }
+
     try {
-      final odooService = _getService();
-      final balances = await odooService.getBalances();
-      state = state.copyWith(
-          balances: balances,
-          isLoading: false,
-          errorMessage: null);
+      final balances = await _odooService.getBalances();
+      state = state.copyWith(balances: balances, isLoading: false);
     } on OdooException catch (e) {
-      state = state.copyWith(
-          isLoading: false,
-          errorMessage: e.message);
+      state = state.copyWith(isLoading: false, errorMessage: e.message);
     } catch (e) {
       state = state.copyWith(
-          isLoading: false,
-          errorMessage: 'Ocurrió un error inesperado.');
+          isLoading: false, errorMessage: 'Ocurrió un error inesperado.');
     }
   }
 
   Future<void> loadBalances() async {
+    if (!_isSessionValid()) return;
     if (state.balances.isNotEmpty) return;
     await _fetchBalances();
   }
@@ -91,39 +93,35 @@ class BalanceNotifier extends StateNotifier<BalanceState> {
   }
 
   Future<void> refreshBalances() async {
+    if (!_isSessionValid()) return;
     await _fetchBalances();
   }
 
   Future<void> updateBalance(int currencyId, int deliveryId, double amount, String action) async {
-    state = state.copyWith(
-        isLoading: true,
-        errorMessage: null);
+    if (!_isSessionValid()) return;
+
+    state = state.copyWith(isLoading: true, clearError: true, lastUpdateSuccess: false);
     try {
-      bool success = false;
-      final odooService = _getService();
-      success = await odooService.updateBalance(currencyId, deliveryId, amount, action);
+      final success = await _odooService.updateBalance(currencyId, deliveryId, amount, action);
       if (success) {
-        _fetchBalances();
+        state = state.copyWith(isLoading: false, lastUpdateSuccess: true);
+        await _fetchBalances();
       } else {
         state = state.copyWith(
-            isLoading: false,
-            errorMessage: "La operación no se pudo completar en el servidor.");
+            isLoading: false, errorMessage: 'La operación no se pudo completar en el servidor.');
       }
     } on OdooException catch (e) {
-      state = state.copyWith(
-          isLoading: false,
-          errorMessage: e.message);
+      state = state.copyWith(isLoading: false, errorMessage: e.message);
     } catch (e) {
       state = state.copyWith(
-          isLoading: false,
-          errorMessage: 'Ocurrió un error inesperado al actualizar.');
+          isLoading: false, errorMessage: 'Ocurrió un error inesperado al actualizar.');
     }
   }
 
 }
 
-
 final balanceProvider = StateNotifierProvider<BalanceNotifier, BalanceState>((ref) {
+  final odooService = ref.watch(odooServiceProvider);
 
-  return BalanceNotifier(ref);
+  return BalanceNotifier(ref, odooService);
 });

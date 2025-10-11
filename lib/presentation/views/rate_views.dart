@@ -1,9 +1,10 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:yo_te_pago/business/config/constants/app_messages.dart';
 import 'package:yo_te_pago/business/config/constants/app_roles.dart';
+import 'package:yo_te_pago/business/config/constants/app_routes.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/providers/auth_notifier.dart';
@@ -14,6 +15,8 @@ import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 
 class RatesView extends ConsumerStatefulWidget {
 
+  static const name = 'rate';
+
   const RatesView({super.key});
 
   @override
@@ -23,38 +26,42 @@ class RatesView extends ConsumerStatefulWidget {
 
 class _RatesViewState extends ConsumerState<RatesView> {
 
-  final TextEditingController _searchController = TextEditingController();
-  Timer? _debounce;
-
   @override
   void initState() {
     super.initState();
 
-    Future.microtask(() => _loadData());
-    _searchController.addListener(_onSearchChanged);
-  }
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    _searchController.removeListener(_onSearchChanged);
-    _searchController.dispose();
-
-    super.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ref.read(rateProvider).rates.isEmpty) {
+        ref.read(rateProvider.notifier).loadRates();
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     final ratesState = ref.watch(rateProvider);
     final authState = ref.watch(authNotifierProvider);
     final userRole = authState.session?.role;
-
-    if (!authState.isLoggedIn || ratesState.isLoading ) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
     final filteredRates = ratesState.filteredRates;
+
+    ref.listen(rateProvider, (previous, next) {
+      if (next.errorMessage != null && previous?.errorMessage != next.errorMessage) {
+        showCustomSnackBar(
+          scaffoldMessenger: scaffoldMessenger,
+          message: next.errorMessage!,
+          type: SnackBarType.error
+        );
+      }
+      if (next.lastUpdateSuccess && previous?.lastUpdateSuccess == false) {
+        showCustomSnackBar(
+          scaffoldMessenger: ScaffoldMessenger.of(context),
+          message: AppMessages.operationSuccess,
+          type: SnackBarType.success
+        );
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -64,81 +71,79 @@ class _RatesViewState extends ConsumerState<RatesView> {
       floatingActionButton: (userRole == ApiRole.manager)
           ? FloatingActionButton(
               heroTag: 'addRate',
-              onPressed: () => context.go('/rate/create'),
+              onPressed: () => context.pushNamed(AppRoutes.rate),
               tooltip: 'Agregar tasa',
               child: const Icon(Icons.add)
             )
           : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: CustomScrollView(
-              slivers: [
+          child: RefreshIndicator(
+            onRefresh: () => ref.read(rateProvider.notifier).refreshRates(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: CustomScrollView(
+                slivers: [
+                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-                SliverToBoxAdapter(
-                    child: Center(
-                        child: Icon(
-                            Icons.currency_exchange,
-                            color: colors.primary,
-                            size: 60
-                        )
-                    )
-                ),
-
-                const SliverPadding(
-                    padding: EdgeInsets.symmetric(vertical: 16.0)
-                ),
-
-                if (userRole != ApiRole.delivery)
                   SliverToBoxAdapter(
-                      child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                          child: TextFormField(
-                              controller: _searchController,
-                              onChanged: (query) {
-                                ref.read(rateProvider.notifier).setSearchQuery(query);
-                              },
-                              decoration: InputDecoration(
-                                  hintText: AppFormLabels.hintDeliverySearch,
-                                  prefixIcon: const Icon(Icons.search),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16.0)
-                              )
+                      child: Center(
+                          child: Icon(
+                              Icons.currency_exchange,
+                              color: colors.primary,
+                              size: 60
                           )
                       )
                   ),
 
-                const SliverPadding(
-                    padding: EdgeInsets.symmetric(vertical: 16.0)
-                ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-                if (ratesState.errorMessage != null && filteredRates.isEmpty)
-                  SliverToBoxAdapter(
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                              ratesState.errorMessage.toString(),
-                              textAlign: TextAlign.center),
-                          const SizedBox(height: 10),
-                          ElevatedButton(
-                            onPressed: () => _loadData(),
-                            child: const Text(AppButtons.retry)
-                          )
-                        ]
+                  if (userRole != ApiRole.delivery)
+                    SliverToBoxAdapter(
+                        child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: TextFormField(
+                                onChanged: (query) {
+                                  ref.read(rateProvider.notifier).setSearchQuery(query);
+                                },
+                                decoration: InputDecoration(
+                                    hintText: AppFormLabels.hintDeliverySearch,
+                                    prefixIcon: const Icon(Icons.search),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16.0)
+                                )
+                            )
+                        )
+                    ),
+
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+                  if (ratesState.errorMessage != null && filteredRates.isEmpty)
+                    SliverFillRemaining(
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                                ratesState.errorMessage!,
+                                style: TextStyle(color: colors.error),
+                                textAlign: TextAlign.center),
+                            const SizedBox(height: 10),
+                            ElevatedButton(
+                              onPressed: () => ref.read(rateProvider.notifier).refreshRates(),
+                              child: const Text(AppButtons.retry)
+                            )
+                          ]
+                        )
                       )
                     )
-                  )
-                else
-                  if (filteredRates.isEmpty)
+                  else if (filteredRates.isEmpty)
                     SliverFillRemaining(
                         hasScrollBody: false,
                         child: Center(
                             child: Text(
                                 'No se encontraron tasas!',
-                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.red)
+                                style: Theme.of(context).textTheme.titleMedium
                             )
                         )
                     )
@@ -155,35 +160,12 @@ class _RatesViewState extends ConsumerState<RatesView> {
                             childCount: filteredRates.length
                         )
                     )
-              ]
-            )
+                ]
+              )
+            ),
           )
       )
     );
-  }
-
-  void _onSearchChanged() {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        setState(() {});
-      }
-    });
-  }
-
-  Future<void> _loadData() async {
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    try {
-      await ref.read(rateProvider.notifier).loadRates();
-    } catch (e) {
-      if (mounted) {
-        showCustomSnackBar(
-          scaffoldMessenger: scaffoldMessenger,
-          message: 'Error al cargar datos de las monedas',
-          type: SnackBarType.error,
-        );
-      }
-    }
   }
 
 }

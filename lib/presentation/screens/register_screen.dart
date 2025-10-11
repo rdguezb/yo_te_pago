@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:yo_te_pago/business/config/constants/api_const.dart';
 import 'package:yo_te_pago/business/config/constants/app_record_messages.dart';
+import 'package:yo_te_pago/business/config/constants/app_routes.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/helpers/form_fields_validators.dart';
@@ -13,7 +14,8 @@ import 'package:yo_te_pago/presentation/widgets/input/custom_text_form_fields.da
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 
 class RegisterScreen extends StatelessWidget {
-  static const name = 'register';
+
+  static const name = AppRoutes.register;
 
   const RegisterScreen({super.key});
 

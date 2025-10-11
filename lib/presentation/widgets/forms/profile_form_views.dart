@@ -2,28 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:yo_te_pago/business/config/constants/app_record_messages.dart';
+import 'package:yo_te_pago/business/config/constants/app_messages.dart';
 import 'package:yo_te_pago/business/config/constants/app_routes.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/helpers/form_fields_validators.dart';
 import 'package:yo_te_pago/business/domain/entities/user.dart';
-import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
 import 'package:yo_te_pago/business/providers/auth_notifier.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/business/providers/profile_provider.dart';
-import 'package:yo_te_pago/presentation/routes/app_router.dart';
 import 'package:yo_te_pago/presentation/widgets/input/custom_text_form_fields.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 
 
 class ProfileFormView extends ConsumerStatefulWidget {
-  static const String name = 'profile';
+
+  static const String name = AppRoutes.profile;
 
   const ProfileFormView({super.key});
 
   @override
   ConsumerState<ProfileFormView> createState() => _ProfileFormViewState();
+
 }
 
 class _ProfileFormViewState extends ConsumerState<ProfileFormView> {
@@ -37,7 +37,10 @@ class _ProfileFormViewState extends ConsumerState<ProfileFormView> {
   @override
   void initState() {
     super.initState();
-    _initializeFormData();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeFormData();
+    });
   }
 
   @override
@@ -45,26 +48,40 @@ class _ProfileFormViewState extends ConsumerState<ProfileFormView> {
     _nameController.dispose();
     _loginController.dispose();
     _emailController.dispose();
+
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final goBackLocation = ref.read(appRouterProvider).namedLocation(AppRoutes.home, pathParameters: {'page': '4'});
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final profileState = ref.watch(profileProvider);
+
+    ref.listen(profileProvider, (previous, next) {
+      if (next.errorMessage != null && next.errorMessage != previous?.errorMessage) {
+        showCustomSnackBar(
+            scaffoldMessenger: scaffoldMessenger,
+            message: next.errorMessage!,
+            type: SnackBarType.error
+        );
+      }
+      if (next.lastUpdateSuccess && previous?.lastUpdateSuccess == false) {
+        ref.invalidate(odooSessionNotifierProvider);
+
+        showCustomSnackBar(
+            scaffoldMessenger: scaffoldMessenger,
+            message: AppMessages.operationSuccess,
+            type: SnackBarType.success
+        );
+        if (context.canPop()) context.pop();
+      }
+    });
 
     return Scaffold(
         appBar: AppBar(
-            title: const Text(AppTitles.myAccount),
-            centerTitle: true,
-            leading: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                onPressed: () {
-                  if (context.canPop()) {
-                    context.pop();
-                  } else {
-                    context.go(goBackLocation);
-                  }
-                })),
+            title: const Text(AppTitles.myProfile),
+            centerTitle: true
+        ),
         body: SafeArea(
             child: SingleChildScrollView(
           child: Padding(
@@ -74,30 +91,26 @@ class _ProfileFormViewState extends ConsumerState<ProfileFormView> {
                   nameController: _nameController,
                   usernameController: _loginController,
                   emailController: _emailController,
+                  isSaving: profileState.isLoading,
                   onSave: _saveMyProfile))
         )));
   }
 
   void _initializeFormData() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final scaffoldMessenger = ScaffoldMessenger.of(context);
-      final goBackLocation = ref.read(appRouterProvider).namedLocation(AppRoutes.home, pathParameters: {'page': '4'});
+    if (!mounted) return;
+    ref.read(profileProvider.notifier).resetState();
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
 
-      final session = ref.read(authNotifierProvider).session;
+    final session = ref.read(authNotifierProvider).session;
 
-      if (session == null) {
-        showCustomSnackBar(
-            scaffoldMessenger: scaffoldMessenger,
-            message: 'Error: No se encontró el usuario.',
-            type: SnackBarType.error);
-        if (context.canPop()) {
-          context.pop();
-        } else {
-          context.go(goBackLocation);
-        }
-      } else {
-        final user = User(
+    if (session == null) {
+      showCustomSnackBar(
+          scaffoldMessenger: scaffoldMessenger,
+          message: 'Error: No se encontró el usuario.',
+          type: SnackBarType.error);
+      if (context.canPop()) context.pop();
+    } else {
+      final user = User(
           id: session.partnerId,
           userId: session.userId,
           name: session.partnerName,
@@ -105,63 +118,43 @@ class _ProfileFormViewState extends ConsumerState<ProfileFormView> {
           email: session.email,
           login: session.userName);
 
-        _nameController.text = user.name;
-        _loginController.text = user.login;
-        _emailController.text = user.email ?? '';
-        setState(() {
-          _user = user;
-        });
-      }
-    });
+      _nameController.text = user.name;
+      _loginController.text = user.login;
+      _emailController.text = user.email ?? '';
+      setState(() {
+        _user = user;
+      });
+    }
   }
 
   Future<void> _saveMyProfile() async {
-    if (!mounted) return;
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     final form = _formKey.currentState;
     if (form == null || !form.validate()) {
       showCustomSnackBar(
           scaffoldMessenger: scaffoldMessenger,
-          message: AppRecordMessages.formHasErrors,
+          message: AppMessages.formHasErrors,
           type: SnackBarType.warning);
 
       return;
     }
 
-    final goBackLocation = ref.read(appRouterProvider).namedLocation(AppRoutes.home, pathParameters: {'page': '4'});
-    final sessionNotifier = ref.read(odooSessionNotifierProvider.notifier);
+    if (_user == null) {
+      showCustomSnackBar(
+          scaffoldMessenger: scaffoldMessenger,
+          message: 'Error: No se ha podido cargar la información del usuario.',
+          type: SnackBarType.error);
+      return;
+    }
 
     final name = _nameController.text;
     final username = _loginController.text;
     final email = _emailController.text;
 
-    try {
-      User userToSave = _user!.copyWith(name: name, login: username, email: email);
-      await ref.read(profileProvider).editProfile(userToSave);
-      await sessionNotifier.updateLocalSession(userToSave);
+    User userToSave = _user!.copyWith(name: name, login: username, email: email);
 
-      showCustomSnackBar(
-          scaffoldMessenger: scaffoldMessenger,
-          message: AppRecordMessages.registerSuccess,
-          type: SnackBarType.success);
-
-      if (context.canPop()) {
-        context.pop();
-      } else {
-        context.go(goBackLocation);
-      }
-    } on OdooException catch (e) {
-      showCustomSnackBar(
-          scaffoldMessenger: scaffoldMessenger,
-          message: e.message,
-          type: SnackBarType.error);
-    } catch (e) {
-      showCustomSnackBar(
-          scaffoldMessenger: scaffoldMessenger,
-          message: 'Ocurrió un error inesperado.',
-          type: SnackBarType.error);
-    }
+    await ref.read(profileProvider.notifier).editProfile(userToSave);
   }
 }
 
@@ -172,13 +165,15 @@ class _ProfileForm extends ConsumerWidget {
   final TextEditingController usernameController;
   final TextEditingController emailController;
   final VoidCallback onSave;
+  final bool isSaving;
 
-  const _ProfileForm(
-      {required this.formKey,
-      required this.nameController,
-      required this.usernameController,
-      required this.emailController,
-      required this.onSave});
+  const _ProfileForm({
+    required this.formKey,
+    required this.nameController,
+    required this.usernameController,
+    required this.emailController,
+    required this.isSaving,
+    required this.onSave});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -221,9 +216,11 @@ class _ProfileForm extends ConsumerWidget {
           const SizedBox(height: 40),
 
           FilledButton.tonalIcon(
-            icon: const Icon(Icons.save_rounded),
+            icon: isSaving
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.save_rounded),
             label: const Text(AppButtons.save),
-            onPressed: onSave,
+            onPressed: isSaving ? null : onSave
           ),
         ],
       ),

@@ -1,31 +1,87 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:yo_te_pago/business/domain/entities/user.dart';
+import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
-import 'package:yo_te_pago/business/providers/users_provider.dart';
+import 'package:yo_te_pago/infrastructure/services/odoo_services.dart';
 
-class ProfileNotifier {
-  final Ref _ref;
+class ProfileState {
 
-  ProfileNotifier(this._ref);
+  final bool isLoading;
+  final String? errorMessage;
+  final bool lastUpdateSuccess;
 
-  Future<void> editProfile(User user) async {
-    final odooService = _ref.read(odooServiceProvider);
-    final success = await odooService.editMyAccount(user);
+  ProfileState({
+    this.isLoading = false,
+    this.errorMessage,
+    this.lastUpdateSuccess = false
+  });
 
-    if (!success) {
-      throw Exception('La operación no se pudo completar en el servidor.');
-    }
+  ProfileState copyWith({
+    bool? isLoading,
+    String? errorMessage,
+    bool? lastUpdateSuccess,
+    bool clearError = false
+  }) {
 
-    await _ref.read(odooSessionNotifierProvider.notifier).updateLocalSession(
-        user);
-
-    final userListState = _ref.read(usersProvider);
-    if (userListState.users.isNotEmpty) {
-      _ref.read(usersProvider.notifier).updateUserInList(user);
-    }
+    return ProfileState(
+      isLoading: isLoading ?? this.isLoading,
+      errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
+      lastUpdateSuccess: lastUpdateSuccess ?? this.lastUpdateSuccess
+    );
   }
 }
 
-final profileProvider = Provider<ProfileNotifier>((ref) {
-  return ProfileNotifier(ref);
+class ProfileNotifier extends StateNotifier<ProfileState> {
+
+  final Ref _ref;
+  final OdooService _odooService;
+
+  ProfileNotifier(this._ref, this._odooService) : super(ProfileState());
+
+  bool _isSessionValid() {
+    if (!_ref.read(odooSessionNotifierProvider).isAuthenticated) {
+      state = state.copyWith(isLoading: false, errorMessage: 'Tu sesión ha expirado.');
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> editProfile(User user) async {
+    if (!_isSessionValid()) return;
+
+    state = state.copyWith(isLoading: true, clearError: true, lastUpdateSuccess: false);
+
+    try {
+      final success = await _odooService.editUser(user);
+
+      if (success) {
+        state = state.copyWith(isLoading: false, lastUpdateSuccess: true);
+
+        _ref.invalidate(odooSessionNotifierProvider);
+
+      } else {
+        state = state.copyWith(
+            isLoading: false, errorMessage: 'La operación no se pudo completar en el servidor.');
+      }
+    } on OdooException catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: e.message);
+    } catch (e) {
+      state = state.copyWith(
+          isLoading: false, errorMessage: 'Ocurrió un error inesperado al editar el perfil.');
+    }
+  }
+
+  void resetState() {
+    state = state.copyWith(
+      lastUpdateSuccess: false,
+      errorMessage: null,
+    );
+  }
+}
+
+final profileProvider = StateNotifierProvider<ProfileNotifier, ProfileState>((ref) {
+  final odooService = ref.watch(odooServiceProvider);
+
+  return ProfileNotifier(ref, odooService);
 });

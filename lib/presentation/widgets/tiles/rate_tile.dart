@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:yo_te_pago/business/config/constants/app_remittance_states.dart';
 import 'package:yo_te_pago/business/config/constants/app_roles.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/domain/entities/rate.dart';
 import 'package:yo_te_pago/business/providers/rates_provider.dart';
-import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/confirm_modal_dialog.dart';
 
 
@@ -44,19 +42,19 @@ class RateTile extends ConsumerWidget {
               subtitle: _getSubtitle(colors.onSurface.withAlpha(178)),
               trailing: (role == ApiRole.manager)
                   ? Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                        icon: const Icon(Icons.mode_edit_rounded),
-                        onPressed: () => _onChangeRate(context, ref)
-                    ),
-                    IconButton(
-                        icon: const Icon(Icons.delete_outline_sharp),
-                        color: colors.error,
-                        onPressed: () => _onDeleteRate(context, ref)
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                            icon: const Icon(Icons.mode_edit_rounded),
+                            onPressed: () => _onChangeRate(context, ref)
+                        ),
+                        IconButton(
+                            icon: const Icon(Icons.delete_outline_sharp),
+                            color: colors.error,
+                            onPressed: () => _onDeleteRate(context, ref)
+                        )
+                      ]
                     )
-                  ]
-              )
                   : null,
             )
         )
@@ -109,6 +107,7 @@ class RateTile extends ConsumerWidget {
           content: TextField(
             controller: controller,
             autofocus: true,
+            keyboardType: TextInputType.number,
             decoration: InputDecoration(hintText: hintText),
             onSubmitted: (value) {
               Navigator.of(context).pop(value);
@@ -148,24 +147,9 @@ class RateTile extends ConsumerWidget {
       return;
     }
 
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
     final rateToUpdate = rate.copyWith(rate: value);
 
-    try {
-      await ref.read(rateProvider.notifier).changeRate(rateToUpdate);
-
-      showCustomSnackBar(
-        scaffoldMessenger: scaffoldMessenger,
-        message: AppRemittanceMessages.rateChanged,
-        type: SnackBarType.success
-      );
-    } catch (e) {
-      showCustomSnackBar(
-        scaffoldMessenger: scaffoldMessenger,
-        message: e.toString(),
-        type: SnackBarType.error
-      );
-    }
+    await ref.read(rateProvider.notifier).changeRate(rateToUpdate);
   }
 
   Future<void> _onDeleteRate(BuildContext context, WidgetRef ref) async {
@@ -181,23 +165,7 @@ class RateTile extends ConsumerWidget {
 
     if (!confirm) return;
 
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-    try {
-      await ref.read(rateProvider.notifier).deleteRate(rate.id!);
-
-      showCustomSnackBar(
-        scaffoldMessenger: scaffoldMessenger,
-        message: AppRemittanceMessages.rateDeletedSuccess,
-        type: SnackBarType.success
-      );
-    } catch (e) {
-      showCustomSnackBar(
-        scaffoldMessenger: scaffoldMessenger,
-        message: e.toString(),
-        type: SnackBarType.error
-      );
-    }
+    await ref.read(rateProvider.notifier).deleteRate(rate.id!);
   }
 
 }
