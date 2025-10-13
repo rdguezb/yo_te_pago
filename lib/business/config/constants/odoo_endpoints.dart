@@ -11,7 +11,7 @@ abstract class OdooEndpoints {
   static const String usersDeliveries = '/api/delivery';
   static const String usersBase = '/api/users';
   static const String profile = '/api/profile';
-  static const String bankAccountAllowBase = '/api/bank_account';
+  static const String bankAccountBase = '/api/bank_account';
   static const String settingsBase = '/api/settings';
   static const String bankBase = '/api/bank';
 

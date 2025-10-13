@@ -28,7 +28,6 @@ class RateState {
         (r.partnerName ?? '').toLowerCase().contains(searchQuery.toLowerCase()))
       .toList();
 
-
   RateState copyWith({
     List<Rate>? rates,
     bool? isLoading,

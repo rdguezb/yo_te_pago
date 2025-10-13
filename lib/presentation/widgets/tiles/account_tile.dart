@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:yo_te_pago/business/config/constants/app_roles.dart';
-import 'package:yo_te_pago/business/config/constants/forms.dart';
-import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/domain/entities/account.dart';
 import 'package:yo_te_pago/business/providers/accounts_provider.dart';
-import 'package:yo_te_pago/presentation/widgets/shared/confirm_modal_dialog.dart';
 
 
 class AccountTile extends ConsumerWidget {
@@ -63,19 +60,34 @@ class AccountTile extends ConsumerWidget {
   }
 
   Future<void> _onUnlinkAccount(BuildContext context, WidgetRef ref) async {
-    final bool confirm = await showDialog(
-      context: context,
-      builder: (context) => ConfirmModalDialog(
-        title: AppTitles.confirmation,
-        content: '¿Estás seguro de que quieres eliminar la cuenta bancaria ${account.toString()} de ${account.partnerName}?',
-        confirmButtonText: AppButtons.delete,
-        confirmButtonColor: Colors.blueAccent,
-      ),
-    ) ?? false;
+    final bool? confirmed = await showDialog<bool>(
+      context: context, builder: (BuildContext dialogContext) {
+      return AlertDialog(
+          title: const Text('Confirmar Eliminación'),
+          content: Text('¿Estás seguro de que deseas eliminar la cuenta "${account.name}" de "${account.partnerName}"? Esta acción no se puede deshacer.'),
+          actions: <Widget>[
+            TextButton(
+                child: const Text('Cancelar'),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(false);
+                }
+            ),
+            FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                ),
+                child: const Text('Eliminar'),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(true);
+                }
+            )
+          ]
+      );
+    });
 
-    if (!confirm) return;
-
-    await ref.read(accountProvider.notifier).deleteAccount(account);
+    if (confirmed == true) {
+      await ref.read(accountProvider.notifier).deleteAccount(account);
+    }
   }
 
 }

@@ -8,5 +8,6 @@ abstract class AppValidationMessages {
   static const deliverySelection = 'Seleccione un usuario';
   static const invalidEmail = 'El correo electrónico no es válido';
   static const selectionRequired = 'Por favor, seleccione una opción';
+  static const bankSelection = 'Seleccione un banco';
 
 }

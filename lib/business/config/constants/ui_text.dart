@@ -14,6 +14,8 @@ abstract class AppTitles {
   static const bankAccountLink = 'Asociar Cuenta Bancaria';
   static const bank = 'Mis Bancos';
   static const bankEdit = 'Editar Banco';
+  static const bankAccountAdd = 'Crear Cuenta Bancaria';
+  static const bankAccountEdit = 'Crear Cuenta Bancaria';
 
   static const myProfile = 'Mi Cuenta';
   static const companyParameters = 'Parámetros / Configuraciones';

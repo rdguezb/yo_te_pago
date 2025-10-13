@@ -137,10 +137,7 @@ class _BalanceFormViewState extends ConsumerState<BalanceFormView> {
     }
 
     await ref.read(balanceProvider.notifier).updateBalance(
-        currencyId,
-        deliveryId,
-        amount,
-        action);
+        currencyId, deliveryId, amount, action);
   }
 
 }

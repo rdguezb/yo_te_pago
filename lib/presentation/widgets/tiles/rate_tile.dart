@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:yo_te_pago/business/config/constants/app_roles.dart';
-import 'package:yo_te_pago/business/config/constants/forms.dart';
-import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/domain/entities/rate.dart';
 import 'package:yo_te_pago/business/providers/rates_provider.dart';
-import 'package:yo_te_pago/presentation/widgets/shared/confirm_modal_dialog.dart';
 
 
 class RateTile extends ConsumerWidget {
@@ -92,80 +89,81 @@ class RateTile extends ConsumerWidget {
           );
   }
 
-  Future<String?> showInputDialog(BuildContext context, {
-    required String title,
-    String? hintText,
-    String? initialValue,
-  }) {
-    final TextEditingController controller = TextEditingController(text: initialValue);
+  Future<void> _onChangeRate(BuildContext context, WidgetRef ref) async {
+    final TextEditingController rateController = TextEditingController(text: '${rate.rate}');
 
-    return showDialog<String>(
-      context: context,
-      builder: (BuildContext context) {
+    final bool? confirmed = await showDialog<bool>(
+        context: context, builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: Text(title),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(hintText: hintText),
-            onSubmitted: (value) {
-              Navigator.of(context).pop(value);
-            }
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancelar'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              }
+            title: const Text('Cambiar Valor de la Tasa'),
+            content: TextField(
+                controller: rateController,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(hintText: 'Ej. 10.50'),
+                onSubmitted: (value) {
+                  Navigator.of(context).pop(value);
+                }
             ),
-            TextButton(
-              child: const Text('Aceptar'),
-              onPressed: () {
-                Navigator.of(context).pop(controller.text);
-              }
-            )
-          ]
+            actions: <Widget>[
+              TextButton(
+                  child: const Text('Cancelar'),
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop(false);
+                  }
+              ),
+              FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                  ),
+                  child: const Text('Aceptar'),
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop(true);
+                  }
+              )
+            ]
         );
       }
     );
-  }
 
-  Future<void> _onChangeRate(BuildContext context, WidgetRef ref) async {
-    final String? result = await showInputDialog(
-      context,
-      title: 'Introduzca nuevo valor',
-      hintText: 'Ej. 10.50',
-      initialValue: '${rate.rate}',
-    );
-
-    if (result == null || result.isEmpty) return;
-
-    final value = double.tryParse(result);
-    if (value == null || value <= 0) {
-      return;
+    if (confirmed == true && rateController.text.trim().isNotEmpty) {
+      final value = double.tryParse(rateController.text.trim());
+      if (value != null || value! > 0) {
+        final rateToUpdate = rate.copyWith(rate: value);
+        await ref.read(rateProvider.notifier).changeRate(rateToUpdate);
+      }
     }
-
-    final rateToUpdate = rate.copyWith(rate: value);
-
-    await ref.read(rateProvider.notifier).changeRate(rateToUpdate);
   }
 
   Future<void> _onDeleteRate(BuildContext context, WidgetRef ref) async {
-    final bool confirm = await showDialog(
-      context: context,
-      builder: (context) => ConfirmModalDialog(
-        title: AppTitles.confirmation,
-        content: '¿Estás seguro de que quieres eliminar la tasa para ${rate.toString()} de ${rate.partnerName}?',
-        confirmButtonText: AppButtons.delete,
-        confirmButtonColor: Colors.blueAccent,
-      ),
-    ) ?? false;
+    final bool? confirmed = await showDialog<bool>(
+      context: context, builder: (BuildContext dialogContext) {
+      return AlertDialog(
+          title: const Text('Confirmar Eliminación'),
+          content: Text('¿Estás seguro de que deseas eliminar la tasa para "${rate.toString()}" de "${rate.partnerName}"? Esta acción no se puede deshacer.'),
+          actions: <Widget>[
+            TextButton(
+                child: const Text('Cancelar'),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(false);
+                }
+            ),
+            FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                ),
+                child: const Text('Eliminar'),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(true);
+                }
+            )
+          ]
+      );
+    });
 
-    if (!confirm) return;
-
-    await ref.read(rateProvider.notifier).deleteRate(rate.id!);
+    if (confirmed == true) {
+      await ref.read(rateProvider.notifier).deleteRate(rate.id!);
+    }
   }
 
 }

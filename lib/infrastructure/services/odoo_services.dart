@@ -476,13 +476,17 @@ class OdooService extends IBaseService {
   @override
   Future<bool> changeRate(Rate rate) async {
     final String url = '${OdooEndpoints.rateBase}/${rate.id}';
-    Map<String, dynamic> dataMap = rate.toMap();
+    final body = {
+      'params': {
+        'data': rate.toMap()
+      }
+    };
 
     try {
       final dynamic response = await _sendJsonRequest(
           'PUT',
           url,
-          bodyParams: dataMap);
+          bodyParams: body);
 
       if (response != null && response['success'] == true) {
         return true;
@@ -688,7 +692,7 @@ class OdooService extends IBaseService {
     try {
       final dynamic response = await _sendJsonRequest(
           'GET',
-          OdooEndpoints.bankAccountAllowBase);
+          OdooEndpoints.bankAccountBase);
 
       final dynamic data = response['data'];
 
@@ -712,6 +716,92 @@ class OdooService extends IBaseService {
     } catch (e) {
       print('Error inesperado al obtener cuentas bancarias permitidas: $e');
       throw OdooException('Ocurrió un error inesperado al procesar las cuentas bancarias permitidas.');
+    }
+  }
+
+  @override
+  Future<BankAccount> addBankAccount(BankAccount bankAccount) async {
+    final body = {
+      'params': {
+        'data': bankAccount.toMap()
+      }
+    };
+
+    try {
+      final response = await _sendJsonRequest(
+          'POST',
+          OdooEndpoints.bankAccountBase,
+          bodyParams: body);
+
+      final dynamic data = response['data'];
+
+      if (data is Map<String, dynamic>) {
+        final res = BankAccount.fromJson(data);
+        return res;
+      } else {
+        final serverMessage = response?['message'] ?? 'The server returned an unexpected response after creating bank account.';
+        throw OdooException(serverMessage);
+      }
+    }on OdooException catch (e) {
+      print('OdooException while adding bank account: ${e.message}');
+      rethrow;
+    } catch (e) {
+      print('Unexpected error while adding bank account: $e');
+      throw OdooException('Ocurrió un error inesperado mientras se creaba una cuenta bancaria.');
+    }
+  }
+
+  @override
+  Future<bool> deleteBankAccount(int bankAccountId) async {
+    final String url = '${OdooEndpoints.bankAccountBase}/${bankAccountId}';
+
+    try {
+      final dynamic response = await _sendJsonRequest(
+          'DELETE',
+          url);
+
+      if (response != null && response['success'] == true) {
+        return true;
+      } else {
+        final serverMessage = response?['message'] ?? 'The server did not confirm the bank account deletion.';
+        throw OdooException(serverMessage);
+      }
+    } on OdooException catch (e) {
+      print('OdooException while deleting bank account with ID $bankAccountId: ${e.message}');
+      rethrow;
+    } catch (e) {
+      print('Unexpected error while deleting bank account with ID $bankAccountId: $e');
+      throw OdooException('An unexpected error occurred while deleting the bank account.');
+    }
+  }
+
+  @override
+  Future<bool> updateBankAccount(BankAccount bankAccount) async {
+    final String url = '${OdooEndpoints.bankAccountBase}/${bankAccount.id}';
+    final body = {
+      'params': {
+        'data': bankAccount.toMap()
+      }
+    };
+
+    try {
+      final response = await _sendJsonRequest(
+          'PUT',
+          url,
+          bodyParams: body);
+
+      if (response != null && response['success'] == true) {
+        return true;
+      } else {
+        final serverMessage = response?['message'] ?? 'The server did not confirm the bank account update.';
+        throw OdooException(serverMessage);
+      }
+    } on OdooException catch (e) {
+      print('OdooException while changing bank account with ID ${bankAccount.id}: ${e.message}');
+      rethrow;
+    } catch (e) {
+      print('Unexpected error while changing bank account with ID ${bankAccount.id}: $e');
+      throw OdooException('An unexpected error occurred while changing the bank account value!');
     }
   }
 
@@ -808,7 +898,7 @@ class OdooService extends IBaseService {
     }
   }
 
-// User
+// User & Settings
 
   @override
   Future<List<User>> getDeliveries() async {

@@ -98,6 +98,7 @@ class BankNotifier extends StateNotifier<BankState> {
     if (!_isSessionValid()) return;
 
     state = state.copyWith(isLoading: true, clearError: true, lastUpdateSuccess: false);
+
     try {
       final newBank = await _odooService.addBank(bank);
 
@@ -117,6 +118,7 @@ class BankNotifier extends StateNotifier<BankState> {
     if (!_isSessionValid()) return;
 
     state = state.copyWith(isLoading: true, clearError: true, lastUpdateSuccess: false);
+
     try {
       final success = await _odooService.updateBank(bank);
 
@@ -140,6 +142,7 @@ class BankNotifier extends StateNotifier<BankState> {
           isLoading: false, errorMessage: 'Ocurrió un error inesperado al editar el banco.');
     }
   }
+
 }
 
 final bankProvider = StateNotifierProvider<BankNotifier, BankState>((ref) {

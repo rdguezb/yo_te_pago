@@ -10,6 +10,7 @@ class ComboBoxPicker extends StatelessWidget {
   final String? Function( String? )? validator;
   final ValueChanged<String?>? onChanged;
   final List<DropdownMenuItem<String>> items;
+  final bool enabled;
 
   const ComboBoxPicker({
     super.key,
@@ -19,6 +20,7 @@ class ComboBoxPicker extends StatelessWidget {
     this.selectedId,
     required this.items,
     this.validator,
+    this.enabled = true,
     this.onChanged
   });
 
@@ -37,17 +39,16 @@ class ComboBoxPicker extends StatelessWidget {
         focusedErrorBorder: border.copyWith(borderSide: BorderSide(color: Colors.red.shade800)),
         isDense: true,
         label: Text(label),
-        filled: isRequired,
-        fillColor: colors.surfaceContainerHighest,
-        focusColor: colors.primary,
+        filled: isRequired || !enabled,
+        fillColor: enabled ? colors.surfaceContainerHighest : colors.surfaceContainerLowest,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       ),
       items: items,
-      onChanged: onChanged,
+      onChanged: enabled ? onChanged : null,
       validator: validator,
       icon: Icon(
           Icons.arrow_drop_down,
-          color: colors.onSurface
+          color: enabled ? colors.onSurfaceVariant : Theme.of(context).disabledColor
       ),
     );
   }

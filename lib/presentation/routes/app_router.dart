@@ -4,19 +4,22 @@ import 'package:go_router/go_router.dart';
 
 import 'package:yo_te_pago/business/config/constants/app_routes.dart';
 import 'package:yo_te_pago/business/domain/entities/bank.dart';
+import 'package:yo_te_pago/business/domain/entities/bank_account.dart';
 import 'package:yo_te_pago/business/domain/entities/remittance.dart';
 import 'package:yo_te_pago/business/providers/auth_notifier.dart';
 import 'package:yo_te_pago/presentation/screens/home_screen.dart';
 import 'package:yo_te_pago/presentation/screens/loading_screen.dart';
 import 'package:yo_te_pago/presentation/screens/register_screen.dart';
+import 'package:yo_te_pago/presentation/views/settings/bank_account_views.dart';
 import 'package:yo_te_pago/presentation/views/settings/banks_views.dart';
 import 'package:yo_te_pago/presentation/widgets/forms/balance_form_views.dart';
 import 'package:yo_te_pago/presentation/widgets/forms/account_form_views.dart';
-import 'package:yo_te_pago/presentation/widgets/forms/bank_form_views.dart';
-import 'package:yo_te_pago/presentation/widgets/forms/profile_form_views.dart';
+import 'package:yo_te_pago/presentation/widgets/forms/settings/bank_account_form_views.dart';
+import 'package:yo_te_pago/presentation/widgets/forms/settings/bank_form_views.dart';
+import 'package:yo_te_pago/presentation/widgets/forms/settings/profile_form_views.dart';
 import 'package:yo_te_pago/presentation/widgets/forms/rate_form_views.dart';
 import 'package:yo_te_pago/presentation/widgets/forms/remittance_form_views.dart';
-import 'package:yo_te_pago/presentation/widgets/forms/setting_form_views.dart';
+import 'package:yo_te_pago/presentation/widgets/forms/settings/setting_form_views.dart';
 import 'package:yo_te_pago/presentation/widgets/under_construction_views.dart';
 
 
@@ -95,12 +98,28 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         name: AppRoutes.banksCreate,
-        path: AppRoutes.banksCreateUrl,
+        path: AppRoutes.bankCreateUrl,
         builder: (context, state) {
           final bank = state.extra as Bank?;
+
           return BanksFormView(bank: bank);
         }
       ),
+      GoRoute(
+        name: AppRoutes.bankAccount,
+        path: AppRoutes.bankAccountsUrl,
+        builder: (context, state) => const BankAccountViews(),
+      ),
+      GoRoute(
+        name: AppRoutes.bankAccountCreate,
+        path: AppRoutes.bankAccountCreateUrl,
+        builder: (context, state) {
+          final bankAccount = state.extra as BankAccount?;
+
+          return BankAccountFormView(bankAccount: bankAccount);
+        },
+      ),
+
       GoRoute(
         name: AppRoutes.password,
         path: AppRoutes.passwordUrl,
@@ -115,11 +134,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: AppRoutes.currency,
         path: AppRoutes.currenciesUrl,
         builder: (context, state) => const PlaceholderScreen(title: 'Monedas'),
-      ),
-      GoRoute(
-        name: AppRoutes.bankAccount,
-        path: AppRoutes.bankAccountsUrl,
-        builder: (context, state) => const PlaceholderScreen(title: 'Cuentas Bancarias'),
       ),
       GoRoute(
         name: AppRoutes.appUpdate,

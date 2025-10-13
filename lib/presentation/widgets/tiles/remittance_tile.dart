@@ -4,11 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import 'package:yo_te_pago/business/config/constants/app_roles.dart';
 import 'package:yo_te_pago/business/config/constants/app_routes.dart';
-import 'package:yo_te_pago/business/config/constants/forms.dart';
-import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/domain/entities/remittance.dart';
 import 'package:yo_te_pago/business/providers/remittances_provider.dart';
-import 'package:yo_te_pago/presentation/widgets/shared/confirm_modal_dialog.dart';
 
 
 class RemittanceTile extends ConsumerWidget {
@@ -109,30 +106,6 @@ class RemittanceTile extends ConsumerWidget {
     return actions;
   }
 
-  Future<void> _showConfirmationDialog({
-    required BuildContext context,
-    required WidgetRef ref,
-    required String title,
-    required String content,
-    required String confirmButtonText,
-    required Future<void> Function() onConfirm,
-    Color confirmButtonColor = Colors.blueAccent
-  }) async {
-    final bool confirm = await showDialog(
-      context: context,
-      builder: (context) => ConfirmModalDialog(
-        title: title,
-        content: content,
-        confirmButtonText: confirmButtonText,
-        confirmButtonColor: confirmButtonColor
-      ),
-    ) ?? false;
-
-    if (!confirm) return;
-
-    await onConfirm();
-  }
-
   Color _getTileColor(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
@@ -181,36 +154,96 @@ class RemittanceTile extends ConsumerWidget {
   }
 
   Future<void> _onPay(BuildContext context, WidgetRef ref) async {
-    await _showConfirmationDialog(
-      context: context,
-      ref: ref,
-      title: AppTitles.confirmation,
-      content: '¿Estás seguro de que quieres cambiar a pagada la remesa de ${remittance.customer}?',
-      confirmButtonText: AppButtons.confirm,
-      onConfirm: () => ref.read(remittanceProvider.notifier).payRemittance(remittance.id!)
-    );
+    final bool? confirmed = await showDialog<bool>(
+      context: context, builder: (BuildContext dialogContext) {
+      return AlertDialog(
+          title: const Text('Confirmar Remesa Pagada'),
+          content: Text('¿Estás seguro de que deseas marcar como pagada la remesa "${remittance.customer}"? Esta acción no se puede deshacer.'),
+          actions: <Widget>[
+            TextButton(
+                child: const Text('Cancelar'),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(false);
+                }
+            ),
+            FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                ),
+                child: const Text('Pagar'),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(true);
+                }
+            )
+          ]
+      );
+    });
+
+    if (confirmed == true) {
+      await ref.read(remittanceProvider.notifier).payRemittance(remittance.id!);
+    }
   }
 
   Future<void> _onDelete(BuildContext context, WidgetRef ref) async {
-    await _showConfirmationDialog(
-      context: context,
-      ref: ref,
-      title: AppTitles.confirmation,
-      content: '¿Estás seguro de que quieres eliminar la remesa de ${remittance.customer}?',
-      confirmButtonText: AppButtons.delete,
-      onConfirm: () => ref.read(remittanceProvider.notifier).deleteRemittance(remittance.id!)
-    );
+    final bool? confirmed = await showDialog<bool>(
+        context: context, builder: (BuildContext dialogContext) {
+      return AlertDialog(
+          title: const Text('Confirmar Eliminación'),
+          content: Text('¿Estás seguro de que deseas eliminar la remesa "${remittance.customer}"? Esta acción no se puede deshacer.'),
+          actions: <Widget>[
+            TextButton(
+                child: const Text('Cancelar'),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(false);
+                }
+            ),
+            FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                ),
+                child: const Text('Eliminar'),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(true);
+                }
+            )
+          ]
+      );
+    });
+
+    if (confirmed == true) {
+      await ref.read(remittanceProvider.notifier).deleteRemittance(remittance.id!);
+    }
   }
 
   Future<void> _onConfirm(BuildContext context, WidgetRef ref) async {
-    await _showConfirmationDialog(
-      context: context,
-      ref: ref,
-      title: AppTitles.confirmation,
-      content: '¿Estás seguro de que quieres cambiar a confirmada la remesa de ${remittance.customer}?',
-      confirmButtonText: AppButtons.confirm,
-      onConfirm: () => ref.read(remittanceProvider.notifier).confirmRemittance(remittance.id!)
-    );
+    final bool? confirmed = await showDialog<bool>(
+        context: context, builder: (BuildContext dialogContext) {
+      return AlertDialog(
+          title: const Text('Confirmar Remesa'),
+          content: Text('¿Estás seguro de que deseas confirmar la remesa "${remittance.customer}"? Esta acción no se puede deshacer.'),
+          actions: <Widget>[
+            TextButton(
+                child: const Text('Cancelar'),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(false);
+                }
+            ),
+            FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                ),
+                child: const Text('Confirmar'),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(true);
+                }
+            )
+          ]
+      );
+    });
+
+    if (confirmed == true) {
+      await ref.read(remittanceProvider.notifier).confirmRemittance(remittance.id!);
+    }
   }
   
 }

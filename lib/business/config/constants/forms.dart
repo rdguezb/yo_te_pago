@@ -20,6 +20,8 @@ abstract class AppFormLabels {
   static var email = 'Correo Electrónico';
   static var hours = 'Horas que mantendra las remesas en el sistema';
   static const hintNameSearch = 'Buscar por nombre';
+  static const bank = 'Banco';
+  static const bankSelect = 'Seleccione un Banco';
 
 }
 

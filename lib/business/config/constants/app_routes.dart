@@ -16,11 +16,12 @@ abstract class AppRoutes {
   static const settings = 'setting-settings';
   static const banks = 'setting-banks';
   static const banksCreate = 'banks-form';
+  static const bankAccount = 'setting-bank-accounts';
+  static const bankAccountCreate = 'bank-accounts-form';
 
   static const password = 'setting-password';
   static const users = 'setting-users';
   static const currency = 'setting-currencies';
-  static const bankAccount = 'setting-bank-accounts';
   static const appUpdate = 'setting-app-update';
 
   // path
@@ -39,12 +40,13 @@ abstract class AppRoutes {
   static const profileUrl = '/setting/profile';
   static const settingsUrl = '/setting/settings';
   static const banksUrl = '/setting/banks';
-  static const banksCreateUrl = '/banks/create';
+  static const bankCreateUrl = '/banks/create';
+  static const bankAccountsUrl = '/setting/bank-accounts';
+  static const bankAccountCreateUrl = '/bank-accounts/create';
 
   static const passwordUrl = '/setting/password';
   static const usersUrl = '/setting/users';
   static const currenciesUrl = '/setting/currencies';
-  static const bankAccountsUrl = '/setting/bank-accounts';
   static const appUpdateUrl = '/setting/app-update';
 
 }
