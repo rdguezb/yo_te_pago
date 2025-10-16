@@ -158,7 +158,6 @@ class BankAccountNotifier extends StateNotifier<BankAccountState> {
     state = state.copyWith(searchQuery: query);
   }
 
-
 }
 
 

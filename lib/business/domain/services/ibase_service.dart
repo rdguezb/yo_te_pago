@@ -14,10 +14,14 @@ abstract class IBaseService {
   // Rates & Currencies
 
   Future<List<Rate>> getRates({int? id});
-  Future<List<Currency>> getAvailableCurrencies();
   Future<Rate> addRate(Rate rate);
   Future<bool> changeRate(Rate rate);
   Future<bool> deleteRate(int id);
+
+  Future<List<Currency>> getAllowCurrencies();
+  Future<List<Currency>> getCurrencies({int limit = 20, int offset = 0});
+  Future<bool> toggleCurrencyActive(int currencyId);
+  Future<bool> updateCurrencyRate(int currencyId, double rate);
 
   // Remittances
 
@@ -57,6 +61,9 @@ abstract class IBaseService {
   Future<List<User>> getDeliveries();
   Future<List<User>> getUsers();
   Future<bool> editUser(User user);
+  Future<User> createUser(User user);
+  Future<bool> changePassword(int userId, String newPassword);
+  Future<bool> deleteUser(int userId);
 
   // Settings
 

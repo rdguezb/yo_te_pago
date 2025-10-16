@@ -7,7 +7,6 @@ import 'package:yo_te_pago/business/config/constants/app_messages.dart';
 import 'package:yo_te_pago/business/config/constants/app_routes.dart';
 import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
-import 'package:yo_te_pago/business/domain/entities/bank.dart';
 import 'package:yo_te_pago/business/providers/banks_provider.dart';
 import 'package:yo_te_pago/presentation/widgets/shared/alert_message.dart';
 import 'package:yo_te_pago/presentation/widgets/tiles/bank_tile.dart';

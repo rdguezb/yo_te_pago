@@ -64,8 +64,8 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
           isLoading: false, errorMessage: 'Error: No se encontró la sesión del usuario.');
     } else {
       final user = User(
-          id: session.partnerId,
-          userId: session.userId,
+          id: session.userId,
+          partnerId: session.partnerId,
           name: session.partnerName,
           role: session.role!,
           email: session.email,
@@ -74,7 +74,6 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       state = state.copyWith(isLoading: false, user: user);
     }
   }
-
 
   Future<void> editProfile(User user) async {
     if (!_isSessionValid()) return;

@@ -22,7 +22,7 @@ class RateTile extends ConsumerWidget {
     final colors = Theme.of(context).colorScheme;
 
     return Card(
-        margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        margin: const EdgeInsets.symmetric(vertical: 8.0),
         elevation: 4.0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
         child: Padding(

@@ -16,7 +16,8 @@ abstract class AppTitles {
   static const bankEdit = 'Editar Banco';
   static const bankAccountAdd = 'Crear Cuenta Bancaria';
   static const bankAccountEdit = 'Crear Cuenta Bancaria';
-
+  static const currencies = 'Monedas';
+  static const users = 'Usuarios';
   static const myProfile = 'Mi Cuenta';
   static const companyParameters = 'Parámetros / Configuraciones';
 

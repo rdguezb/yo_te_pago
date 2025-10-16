@@ -4,7 +4,7 @@ class UserDto extends User {
 
   UserDto({
     required super.id,
-    required super.userId,
+    required super.partnerId,
     required super.name,
     required super.role,
     required super.login,
@@ -15,7 +15,7 @@ class UserDto extends User {
 
     return UserDto(
         id: (json['id'] as int?) ?? 0,
-        userId: (json['user_id'] as int?) ?? 0,
+        partnerId: (json['partner_id'] as int?) ?? 0,
         name: json['name'] as String,
         role: json['role'] as String,
         login: json['login'] as String,
@@ -26,7 +26,7 @@ class UserDto extends User {
 
     return User(
         id: id,
-        userId: userId,
+        partnerId: partnerId,
         name: name,
         role: role,
         login: login,

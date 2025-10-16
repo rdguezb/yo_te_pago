@@ -6,20 +6,20 @@ import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/infrastructure/services/odoo_services.dart';
 
 
-class CurrencyState {
+class CompanyCurrencyState {
   final List<Currency> currencies;
   final bool isLoading;
   final String? errorMessage;
   final bool lastUpdateSuccess;
 
-  CurrencyState({
+  CompanyCurrencyState({
     this.currencies = const [],
     this.isLoading = false,
     this.errorMessage,
     this.lastUpdateSuccess = false
   });
 
-  CurrencyState copyWith({
+  CompanyCurrencyState copyWith({
     List<Currency>? currencies,
     bool? isLoading,
     String? errorMessage,
@@ -27,7 +27,7 @@ class CurrencyState {
     bool clearError = false
   }) {
 
-    return CurrencyState(
+    return CompanyCurrencyState(
       currencies: currencies ?? this.currencies,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
@@ -37,13 +37,13 @@ class CurrencyState {
 }
 
 
-class CurrencyNotifier extends StateNotifier<CurrencyState> {
+class CompanyCurrencyNotifier extends StateNotifier<CompanyCurrencyState> {
 
   final Ref _ref;
   final OdooService _odooService;
 
 
-  CurrencyNotifier(this._ref, this._odooService) : super(CurrencyState());
+  CompanyCurrencyNotifier(this._ref, this._odooService) : super(CompanyCurrencyState());
 
   bool _isSessionValid() {
     if (!_ref.read(odooSessionNotifierProvider).isAuthenticated) {
@@ -61,7 +61,7 @@ class CurrencyNotifier extends StateNotifier<CurrencyState> {
     }
 
     try {
-      final currencies = await _odooService.getAvailableCurrencies();
+      final currencies = await _odooService.getAllowCurrencies();
       state = state.copyWith(currencies: currencies, isLoading: false);
     } on OdooException catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.message);
@@ -84,8 +84,8 @@ class CurrencyNotifier extends StateNotifier<CurrencyState> {
 }
 
 
-final currencyProvider = StateNotifierProvider<CurrencyNotifier, CurrencyState>((ref) {
+final companyCurrencyProvider = StateNotifierProvider<CompanyCurrencyNotifier, CompanyCurrencyState>((ref) {
   final odooService = ref.watch(odooServiceProvider);
 
-  return CurrencyNotifier(ref, odooService);
+  return CompanyCurrencyNotifier(ref, odooService);
 });

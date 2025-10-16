@@ -1,11 +1,14 @@
 abstract class OdooEndpoints {
 
+  // --- Authentication ---
   static const String authenticate = '/web/session/authenticate';
   static const String logout = '/web/session/logout';
 
+  // --- API Endpoints ---
   static const String remittanceBase = '/api/remittance';
   static const String rateBase = '/api/rate';
-  static const String getCurrencies = '/api/currencies';
+  static const String allowCurrencies = '/api/currency';
+  static const String currencyBase = '/api/currencies';
   static const String balanceBase = '/api/balance';
   static const String accountBase = '/api/account';
   static const String usersDeliveries = '/api/delivery';
@@ -14,8 +17,8 @@ abstract class OdooEndpoints {
   static const String bankAccountBase = '/api/bank_account';
   static const String settingsBase = '/api/settings';
   static const String bankBase = '/api/bank';
-
-
+  
+  // --- Deprecated or Unused ---
   // static const String getBalances = '/api/v1/balance/total';
   // static const String getRates = '/api/v1/rates/get';
   // static const String getBankAccount = '/api/v1/accounts/get';

@@ -7,16 +7,22 @@ class CurrencyDto extends Currency {
     required super.id,
     required super.name,
     required super.fullName,
-    required super.symbol
+    required super.symbol,
+    super.rate,
+    super.isReference,
+    super.isActive
   });
 
   factory CurrencyDto.fromJson(Map<String, dynamic> json) {
 
     return CurrencyDto(
-        id: json['id'] == false ? null : json['id'],
+        id: (json['id'] as int?) ?? 0,
         name: json['name'],
         fullName: json['fullName'],
-        symbol: json['symbol']
+        symbol: json['symbol'],
+        rate: (json['rate'] as double?) ?? 0,
+        isReference: (json['is_company_currency'] as bool),
+        isActive: (json['is_allow'] as bool)
     );
   }
 
@@ -26,7 +32,10 @@ class CurrencyDto extends Currency {
         id: id,
         name: name,
         fullName: fullName,
-        symbol: symbol
+        symbol: symbol,
+        rate: rate,
+        isReference: isReference,
+        isActive: isActive
     );
   }
 

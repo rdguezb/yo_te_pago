@@ -15,13 +15,14 @@ abstract class AppRoutes {
   static const profile = 'setting-profile';
   static const settings = 'setting-settings';
   static const banks = 'setting-banks';
-  static const banksCreate = 'banks-form';
   static const bankAccount = 'setting-bank-accounts';
+  static const currency = 'setting-currencies';
+  static const banksCreate = 'banks-form';
   static const bankAccountCreate = 'bank-accounts-form';
+  static const users = 'setting-users';
+  static const usersCreate = 'users-form';
 
   static const password = 'setting-password';
-  static const users = 'setting-users';
-  static const currency = 'setting-currencies';
   static const appUpdate = 'setting-app-update';
 
   // path

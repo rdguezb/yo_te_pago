@@ -10,7 +10,7 @@ import 'package:yo_te_pago/business/config/constants/forms.dart';
 import 'package:yo_te_pago/business/config/constants/ui_text.dart';
 import 'package:yo_te_pago/business/config/helpers/form_fields_validators.dart';
 import 'package:yo_te_pago/business/domain/entities/rate.dart';
-import 'package:yo_te_pago/business/providers/currencies_provider.dart';
+import 'package:yo_te_pago/business/providers/company_currencies_provider.dart';
 import 'package:yo_te_pago/business/providers/deliveries_provider.dart';
 import 'package:yo_te_pago/business/providers/rates_provider.dart';
 import 'package:yo_te_pago/presentation/widgets/input/decimal_form_fields.dart';
@@ -43,8 +43,8 @@ class _RateFormViewState extends ConsumerState<RateFormView> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (ref.read(currencyProvider).currencies.isEmpty) {
-        ref.read(currencyProvider.notifier).loadCurrencies();
+      if (ref.read(companyCurrencyProvider).currencies.isEmpty) {
+        ref.read(companyCurrencyProvider.notifier).loadCurrencies();
       }
       if (ref.read(deliveryProvider).deliveries.isEmpty) {
         ref.read(deliveryProvider.notifier).loadDeliveries();
@@ -62,7 +62,7 @@ class _RateFormViewState extends ConsumerState<RateFormView> {
   @override
   Widget build(BuildContext context) {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final currencyState = ref.watch(currencyProvider);
+    final currencyState = ref.watch(companyCurrencyProvider);
     final deliveryState = ref.watch(deliveryProvider);
     final rateState = ref.watch(rateProvider);
 
@@ -128,7 +128,7 @@ class _RateFormViewState extends ConsumerState<RateFormView> {
     }
 
     final amount = double.tryParse(_rateController.text) ?? 0.0;
-    final currency = ref.read(currencyProvider).currencies.firstWhereOrNull(
+    final currency = ref.read(companyCurrencyProvider).currencies.firstWhereOrNull(
             (c) => c.id.toString() == _selectedCurrencyId);
     final delivery = ref.read(deliveryProvider).deliveries.firstWhereOrNull(
             (c) => c.id.toString() == _selectedDeliveryId);
@@ -179,7 +179,7 @@ class _RateForm extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = Theme.of(context).colorScheme;
-    final currencyState = ref.watch(currencyProvider);
+    final currencyState = ref.watch(companyCurrencyProvider);
     final deliveryState = ref.watch(deliveryProvider);
 
     return SingleChildScrollView(
@@ -266,7 +266,7 @@ class _RateForm extends ConsumerWidget {
     );
   }
 
-  Widget _buildCurrencyDropdown(BuildContext context, WidgetRef ref, CurrencyState state, ValueChanged<String?> onChanged, String? selectedId) {
+  Widget _buildCurrencyDropdown(BuildContext context, WidgetRef ref, CompanyCurrencyState state, ValueChanged<String?> onChanged, String? selectedId) {
     assert(state.currencies.isNotEmpty || state.errorMessage != null || state.isLoading);
 
     if (state.errorMessage != null && state.currencies.isEmpty) {
@@ -280,7 +280,7 @@ class _RateForm extends ConsumerWidget {
             const SizedBox(height: 10),
             ElevatedButton(
                 onPressed: () {
-                  ref.read(currencyProvider.notifier).loadCurrencies();
+                  ref.read(companyCurrencyProvider.notifier).loadCurrencies();
                 },
                 child: const Text(AppButtons.retry)
             )

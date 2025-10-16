@@ -126,7 +126,50 @@ class OdooService extends IBaseService {
     }
   }
 
+  List<T> _parseResponseToList<T>(dynamic data, T Function(Map<String, dynamic>) fromJson) {
+    if (data == null) {
+      return [];
+    }
+    if (data is Map<String, dynamic>) {
+      return [fromJson(data)];
+    } else if (data is List) {
+      return data.map((item) => fromJson(item as Map<String, dynamic>)).toList();
+    } else {
+      return [];
+    }
+  }
+
+  Future<T> _handleRequest<T>(Future<T> Function() requestFunction, {required String errorContext}) async {
+    try {
+
+      return await requestFunction();
+    } on OdooException catch (e) {
+      print('OdooException en $errorContext: ${e.message}');
+      rethrow;
+    } catch (e) {
+      print('Error inesperado en $errorContext: $e');
+      throw OdooException('Ocurrió un error inesperado durante la operación en $errorContext.');
+    }
+  }
+
   Future<bool> authenticate(String login, String password) async {
+    try {
+      print('--- DEBUG: INTENTANDO CONECTAR A http://10.0.2.2:8069 ---');
+      final debugUri = Uri.parse('http://10.0.2.2:8069/web/database/list');
+      final debugResponse = await http.post(
+        debugUri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'jsonrpc': '2.0', 'method': 'call', 'params': {}}),
+      ).timeout(const Duration(seconds: 10));
+      print('--- DEBUG SUCCESS ---');
+      print('--- DEBUG STATUS: ${debugResponse.statusCode} ---');
+    } catch (e) {
+      print('--- DEBUG FAILED: ${e.toString()} ---');
+    }
+
+    print('----- Autenticando con login: $login');
+    print('----- Autenticando con pass: $password');
+
     final uri = Uri.parse('$baseUrl${OdooEndpoints.authenticate}');
 
     try {
@@ -179,863 +222,676 @@ class OdooService extends IBaseService {
         throw Exception('Fallo la autenticación con código: ${response.statusCode} - ${response.body}');
       }
     } on http.ClientException catch (e) {
-      print('--- ERROR DE CONEXIÓN (ClientException) ---');
-      print('Mensaje: ${e.message}');
-      print('URI: ${e.uri}');
-      throw Exception('Error de red durante la autenticación');
-    } catch (e, stackTrace) {
-      print('--- ERROR DESCONOCIDO ---');
-      print('Tipo de Error: ${e.runtimeType}');
-      print('Error: $e');
-      print('Stack Trace: $stackTrace');
-      throw Exception('Error desconocido durante la autenticación');
+      print('--- ERROR DE CONEXIÓN (ClientException) en Autenticación: ${e.message} ---');
+      throw Exception('Error de red. Por favor, revisa tu conexión a internet.');
+    } catch (e) {
+      print('--- ERROR DESCONOCIDO en Autenticación: $e ---');
+      throw OdooException('Ocurrió un error inesperado durante la autenticación.');
     }
   }
 
   Future<void> logout() async {
+    if (_authResult?.sessionId == null) return;
     final uri = Uri.parse('$baseUrl${OdooEndpoints.logout}');
     try {
       final response = await http.get(
-        uri,
-        headers: {
-          'Cookie': _authResult!.sessionId ?? '',
-        },
-      );
+        uri, headers: {'Cookie': _authResult!.sessionId ?? ''});
+
       if (response.statusCode == 200 || response.statusCode == 303) {
         _authResult = null;
       } else {
+        print('OdooService: Error al cerrar sesión: ${response.statusCode} - ${response.body}');
         throw Exception('OdooService: Error al cerrar sesión: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
+      print('OdooService: Error desconocido al cerrar sesión: $e');
       throw Exception('OdooService: Error desconocido al cerrar sesión');
     }
+    _authResult = null;
   }
 
 // Remittances
 
   @override
   Future<List<Remittance>> getRemittances({int? id}) async {
-    String url = OdooEndpoints.remittanceBase;
 
-    if (id != null) {
-      url = '$url/$id';
-    }
-    try {
-      final dynamic response = await _sendJsonRequest(
-        'GET',
-        url);
-      final dynamic data = response['data'];
+    return _handleRequest(() async {
+          String url = OdooEndpoints.remittanceBase;
+          if (id != null) {
+            url = '$url/$id';
+          }
 
-      List<RemittanceDto> remittancesDto;
-      if (data is Map<String, dynamic>) {
-        remittancesDto = [RemittanceDto.fromJson(data)];
-      } else if (data is List) {
-        remittancesDto = data
-            .map((jsonItem) => RemittanceDto.fromJson(jsonItem as Map<String, dynamic>))
-            .toList();
-      } else {
-        remittancesDto = [];
-      }
+          final response = await _sendJsonRequest('GET', url);
+          final dtos = _parseResponseToList(response['data'], RemittanceDto.fromJson);
 
-      return remittancesDto
-          .map((dto) => dto.toModel())
-          .toList();
-    } on OdooException catch (e) {
-      print('Error de Odoo al obtener remesas: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Error inesperado al obtener remesas: $e');
-      throw OdooException('Ocurrió un error inesperado al procesar las remesas.');
-    }
+          return dtos.map((dto) => dto.toModel()).toList();
+        },
+        errorContext: 'obtención de remesas'
+    );
   }
 
   @override
   Future<Remittance> addRemittance(Remittance remittance) async {
-    final body = remittance.toMap();
 
-    try {
-      final response = await _sendJsonRequest(
-          'POST',
-          OdooEndpoints.remittanceBase,
-          bodyParams: body);
+    return _handleRequest(() async {
+          final response = await _sendJsonRequest(
+              'POST', OdooEndpoints.remittanceBase, bodyParams: remittance.toMap());
+          final data = response['data'];
 
-      final dynamic data = response['data'];
-
-      if (data is Map<String, dynamic>) {
-        final res = Remittance.fromJson(data);
-        return res;
-      } else {
-        final serverMessage = response?['message'] ?? 'The server returned an unexpected response after creating the remittance.';
-        throw OdooException(serverMessage);
-      }
-    } on OdooException catch (e) {
-      print('OdooException while adding remittance: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Unexpected error while adding remittance: $e');
-      throw OdooException('An unexpected error occurred while processing the new remittance.');
-    }
+          if (data is Map<String, dynamic>) {
+            return Remittance.fromJson(data);
+          } else {
+            throw OdooException(response['message'] ?? 'El servidor devolvió una respuesta inesperada.');
+          }
+        },
+        errorContext: 'creación de remesa');
   }
 
   @override
   Future<bool> editRemittance(Remittance remittance) async {
-    final String url = '${OdooEndpoints.remittanceBase}/${remittance.id}';
-    Map<String, dynamic> dataMap = remittance.toMap();
-    dataMap.remove('remittance_date');
 
-    try {
-      final dynamic response = await _sendJsonRequest(
-        'PUT',
-        url,
-        bodyParams: dataMap);
+    return _handleRequest(() async {
+          final url = '${OdooEndpoints.remittanceBase}/${remittance.id}';
 
-      if (response != null && response['success'] == true) {
-        return true;
-      } else {
-        final serverMessage = response?['message'] ?? 'The server did not confirm the remittance update.';
-        throw OdooException(serverMessage);
-      }
+          final response = await _sendJsonRequest(
+              'PUT', url, bodyParams: remittance.toMap());
 
-    } on OdooException catch (e) {
-      print('OdooException while editing remittance with ID ${remittance.id}: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Unexpected error while editing remittance with ID ${remittance.id}: $e');
-      throw OdooException('An unexpected error occurred while updating the remittance.');
-    }
+          if (response != null && response['success'] == true) {
+            return true;
+          } else {
+            throw OdooException(response['message'] ?? 'El servidor no confirmó la actualización de la remesa.');
+          }
+        },
+        errorContext: 'edición de remesa');
   }
 
   @override
   Future<bool> confirmRemittance(int id) async {
-    final String url = '${OdooEndpoints.remittanceBase}/confirm/${id}';
 
-    try {
-      final dynamic response = await _sendJsonRequest(
-        'PUT',
-        url);
+    return _handleRequest(() async {
+          final url = '${OdooEndpoints.remittanceBase}/confirm/$id';
 
-      if (response != null && response['success'] == true) {
-        return true;
-      } else {
-        final serverMessage = response?['message'] ?? 'The server did not confirm the remittance.';
-        throw OdooException(serverMessage);
-      }
-    }  on OdooException catch (e) {
-      print('OdooException while confirming remittance with ID ${id}: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Unexpected error while confirming remittance with ID ${id}: $e');
-      throw OdooException('An unexpected error occurred while confirming the remittance.');
-    }
+          final response = await _sendJsonRequest('PUT', url);
+
+          if (response != null && response['success'] == true) {
+            return true;
+          } else {
+            throw OdooException(response['message'] ?? 'El servidor no confirmó la operación.');
+          }
+        },
+        errorContext: 'confirmación de remesa');
   }
 
   @override
   Future<bool> payRemittance(int id) async {
-    final String url = '${OdooEndpoints.remittanceBase}/pay/${id}';
 
-    try {
-      final dynamic response = await _sendJsonRequest(
-          'PUT',
-          url);
+    return _handleRequest(() async {
+          final url = '${OdooEndpoints.remittanceBase}/pay/$id';
 
-      if (response != null && response['success'] == true) {
-        return true;
-      } else {
-        final serverMessage = response?['message'] ?? 'The server did not confirm the payment.';
-        throw OdooException(serverMessage);
-      }
-    } on OdooException catch (e) {
-      print('OdooException while paying remittance with ID ${id}: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Unexpected error while paying remittance with ID ${id}: $e');
-      throw OdooException('An unexpected error occurred while paying the remittance.');
-    }
+          final response = await _sendJsonRequest('PUT', url);
+
+          if (response != null && response['success'] == true) {
+            return true;
+          } else {
+            throw OdooException(response['message'] ?? 'El servidor no confirmó la operación.');
+          }
+        },
+        errorContext: 'pago de remesa');
   }
 
   @override
   Future<bool> deleteRemittance(int id) async {
-    final String url = '${OdooEndpoints.remittanceBase}/$id';
 
-    try {
-      final dynamic response = await _sendJsonRequest(
-          'DELETE',
-          url);
+    return _handleRequest(() async {
+          final url = '${OdooEndpoints.remittanceBase}/$id';
 
-      if (response != null && response['success'] == true) {
-        return true;
-      } else {
-        final serverMessage = response?['message'] ?? 'The server did not confirm the deletion.';
-        throw OdooException(serverMessage);
-      }
-    } on OdooException catch (e) {
-      print('OdooException while deleting remittance with ID $id: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Unexpected error while deleting remittance with ID $id: $e');
-      throw OdooException('An unexpected error occurred while deleting the remittance.');
-    }
+          final response = await _sendJsonRequest('DELETE', url);
+
+          if (response != null && response['success'] == true) {
+            return true;
+          } else {
+            throw OdooException(response['message'] ?? 'El servidor no confirmó la operación.');
+          }
+        },
+        errorContext: 'eliminación de remesa');
   }
 
-// Rates & Currencies
-
-  @override
-  Future<List<Currency>> getAvailableCurrencies() async {
-    try {
-      final dynamic response = await _sendJsonRequest(
-          'GET',
-          OdooEndpoints.getCurrencies);
-      final dynamic data = response['data'];
-      List<CurrencyDto> currencyDto;
-      if (data is Map<String, dynamic>) {
-        currencyDto = [CurrencyDto.fromJson(data)];
-      } else if (data is List) {
-        currencyDto = data
-            .map((jsonItem) => CurrencyDto.fromJson(jsonItem as Map<String, dynamic>))
-            .toList();
-      } else {
-        currencyDto = [];
-      }
-
-      return currencyDto
-          .map((dto) => dto.toModel())
-          .toList();
-    } on OdooException catch (e) {
-      print('OdooException while getting currencies: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Unexpected error while getting currencies: $e');
-      throw OdooException('An unexpected error occurred while getting the currencies.');
-    }
-  }
+// Rates
 
   @override
   Future<List<Rate>> getRates({int? id}) async {
-    String url = OdooEndpoints.rateBase;
 
-    if (id != null) {
-      url = '$url/$id';
-    }
-    try {
-      final dynamic response = await _sendJsonRequest(
-          'GET',
-          url);
-      final dynamic data = response['data'];
+    return _handleRequest(() async {
+          String url = OdooEndpoints.rateBase;
+          if (id != null) {
+            url = '$url/$id';
+          }
 
-      List<RateDto> ratesDto;
-      if (data is Map<String, dynamic>) {
-        ratesDto = [RateDto.fromJson(data)];
-      } else if (data is List) {
-        ratesDto = data
-            .map((jsonItem) => RateDto.fromJson(jsonItem as Map<String, dynamic>))
-            .toList();
-      } else {
-        ratesDto = [];
-      }
+          final response = await _sendJsonRequest('GET', url);
+          final dtos = _parseResponseToList(response['data'], RateDto.fromJson);
 
-      return ratesDto
-          .map((dto) => dto.toModel())
-          .toList();
-    } on OdooException catch (e) {
-      print('OdooException while getting rates: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Unexpected error while getting rates: $e');
-      throw OdooException('An unexpected error occurred while getting the rates.');
-    }
+          return dtos.map((dto) => dto.toModel()).toList();
+        },
+        errorContext: 'obtención de tasas'
+    );
   }
 
   @override
   Future<Rate> addRate(Rate rate) async {
-    final body = rate.toMap();
 
-    try {
-      final response = await _sendJsonRequest(
-          'POST',
-          OdooEndpoints.rateBase,
-          bodyParams: body);
+    return _handleRequest(() async {
+          final response = await _sendJsonRequest(
+              'POST', OdooEndpoints.rateBase, bodyParams: rate.toMap());
+          final data = response['data'];
 
-      final dynamic data = response['data'];
-
-      if (data is Map<String, dynamic>) {
-        final res = Rate.fromJson(data);
-        return res;
-      } else {
-        final serverMessage = response?['message'] ?? 'The server returned an unexpected response after creating the rate.';
-        throw OdooException(serverMessage);
-      }
-    }on OdooException catch (e) {
-      print('OdooException while adding rate: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Unexpected error while adding rate: $e');
-      throw OdooException('An unexpected error occurred while adding the new rate.');
-    }
+          if (data is Map<String, dynamic>) {
+            return Rate.fromJson(data);
+          } else {
+            throw OdooException(response['message'] ?? 'El servidor devolvió una respuesta inesperada.');
+          }
+        },
+        errorContext: 'creación de tasa');
   }
 
   @override
   Future<bool> changeRate(Rate rate) async {
-    final String url = '${OdooEndpoints.rateBase}/${rate.id}';
-    final body = {
-      'params': {
-        'data': rate.toMap()
-      }
-    };
 
-    try {
-      final dynamic response = await _sendJsonRequest(
-          'PUT',
-          url,
-          bodyParams: body);
+    return _handleRequest(() async {
+          final url = '${OdooEndpoints.rateBase}/${rate.id}';
+          final body = {
+            'params': {
+              'data': rate.toMap()
+            }
+          };
+          final response = await _sendJsonRequest(
+              'PUT', url, bodyParams: body);
 
-      if (response != null && response['success'] == true) {
-        return true;
-      } else {
-        final serverMessage = response?['message'] ?? 'The server did not confirm the rate update.';
-        throw OdooException(serverMessage);
-      }
-    } on OdooException catch (e) {
-      print('OdooException while changing rate with ID ${rate.id}: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Unexpected error while changing rate with ID ${rate.id}: $e');
-      throw OdooException('An unexpected error occurred while changing the rate value!');
-    }
+          if (response != null && response['success'] == true) {
+            return true;
+          } else {
+            throw OdooException(response['message'] ?? 'El servidor no confirmó la operación.');
+          }
+        },
+        errorContext: 'cambio del valor de la tasa');
   }
 
   @override
   Future<bool> deleteRate(int id) async {
-    final String url = '${OdooEndpoints.rateBase}/$id';
 
-    try {
-      final dynamic response = await _sendJsonRequest(
-          'DELETE',
-          url);
+    return _handleRequest(() async {
+          final url = '${OdooEndpoints.rateBase}/$id';
+
+          final response = await _sendJsonRequest('DELETE', url);
+
+          if (response != null && response['success'] == true) {
+            return true;
+          } else {
+            throw OdooException(response['message'] ?? 'El servidor no confirmó la operación.');
+          }
+        },
+        errorContext: 'eliminación de tasa');
+  }
+
+// Currencies
+
+  @override
+  Future<List<Currency>> getAllowCurrencies() async {
+
+    return _handleRequest(() async {
+      final response = await _sendJsonRequest('GET', OdooEndpoints.allowCurrencies);
+      final dtos = _parseResponseToList(response['data'], CurrencyDto.fromJson);
+
+      return dtos.map((dto) => dto.toModel()).toList();
+    },
+        errorContext: 'obtención de monedas permitidas'
+    );
+  }
+
+  @override
+  Future<List<Currency>> getCurrencies({int limit = 20, int offset = 0}) async {
+
+    return _handleRequest(() async {
+          final queryParams = {'limit': limit, 'offset': offset};
+
+          final response = await _sendJsonRequest(
+              'GET', OdooEndpoints.currencyBase, queryParams: queryParams);
+
+          final dtos = _parseResponseToList(response['data'], CurrencyDto.fromJson);
+
+          return dtos.map((dto) => dto.toModel()).toList();
+        },
+        errorContext: 'obtención de monedas'
+    );
+  }
+
+  @override
+  Future<bool> toggleCurrencyActive(int currencyId) async {
+
+    return _handleRequest(() async {
+      final url = '${OdooEndpoints.currencyBase}/$currencyId';
+      final response = await _sendJsonRequest('POST', url);
 
       if (response != null && response['success'] == true) {
         return true;
       } else {
-        final serverMessage = response?['message'] ?? 'The server did not confirm the rate deletion.';
-        throw OdooException(serverMessage);
+        throw OdooException(response['message'] ?? 'El servidor no confirmó la operación.');
       }
-    } on OdooException catch (e) {
-      print('OdooException while deleting rate with ID $id: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Unexpected error while deleting rate with ID $id: $e');
-      throw OdooException('An unexpected error occurred while deleting the rate.');
-    }
+    },
+    errorContext: 'activar/desactivar moneda');
+  }
+
+  @override
+  Future<bool> updateCurrencyRate(int currencyId, double rate) async {
+
+    return _handleRequest(() async {
+      final url = '${OdooEndpoints.currencyBase}/$currencyId';
+      final body = {
+        'params': {
+          'data': rate
+        }
+      };
+
+      final response = await _sendJsonRequest('PUT', url, bodyParams: body);
+
+      if (response != null && response['success'] == true) {
+        return true;
+      } else {
+        throw OdooException(response['message'] ?? 'El servidor no confirmó la operación.');
+      }
+    },
+    errorContext: 'actualizar tasa de moneda');
   }
 
 // Balances
 
   @override
   Future<List<Balance>> getBalances() async {
-    try {
-      final dynamic response = await _sendJsonRequest(
-          'GET',
-          OdooEndpoints.balanceBase);
 
-      final dynamic data = response['data'];
+    return _handleRequest(() async {
+          final response = await _sendJsonRequest(
+              'GET', OdooEndpoints.balanceBase);
+          final dtos = _parseResponseToList(response['data'], BalanceDto.fromJson);
 
-      List<BalanceDto> balanceDto;
-      if (data is Map<String, dynamic>) {
-        balanceDto = [BalanceDto.fromJson(data)];
-      } else if (data is List) {
-        balanceDto = data
-            .map((jsonItem) => BalanceDto.fromJson(jsonItem as Map<String, dynamic>))
-            .toList();
-      } else {
-        balanceDto = [];
-      }
-
-      return balanceDto
-          .map((dto) => dto.toModel())
-          .toList();
-    } on OdooException catch (e) {
-      print('OdooException while getting balances: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Unexpected error while getting balances: $e');
-      throw OdooException('An unexpected error occurred while getting the balances.');
-    }
+          return dtos.map((dto) => dto.toModel()).toList();
+        },
+        errorContext: 'obtención de saldos'
+    );
   }
 
   @override
   Future<bool> updateBalance(int currencyId, int partnerId, double amount, String type) async {
-    final body = {
-      'amount': amount,
-      'currency_id': currencyId,
-      'partner_id': partnerId,
-      'action': type
-    };
 
-    try {
-      final response = await _sendJsonRequest(
-          'POST',
-          OdooEndpoints.balanceBase,
-          bodyParams: body);
+    return _handleRequest(() async {
+          final body = {
+            'amount': amount,
+            'currency_id': currencyId,
+            'partner_id': partnerId,
+            'action': type};
+          final response = await _sendJsonRequest(
+              'POST', OdooEndpoints.balanceBase, bodyParams: body);
 
-      if (response != null && response['success'] == true) {
-        return true;
-      } else {
-        final serverMessage = response?['message'] ?? 'The server did not confirm the balance update.';
-        throw OdooException(serverMessage);
-      }
-    } on OdooException catch (e) {
-      print('OdooException while updating balance: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Unexpected error while updating balance: $e');
-      throw OdooException('An unexpected error occurred while updating the balance.');
-    }
+          if (response != null && response['success'] == true) {
+            return true;
+          } else {
+            throw OdooException(response['message'] ?? 'El servidor no confirmó la operación.');
+          }
+        },
+        errorContext: 'actualización de saldos'
+    );
   }
 
-// Accounts, Bank & Bank Accounts
+// Accounts, Bank Accounts
 
   @override
   Future<List<Account>> getAccounts() async {
-    try {
-      final dynamic response = await _sendJsonRequest(
-          'GET',
-          OdooEndpoints.accountBase);
 
-      final dynamic data = response['data'];
+    return _handleRequest(() async {
+          final response = await _sendJsonRequest(
+              'GET', OdooEndpoints.accountBase);
+          final dtos = _parseResponseToList(response['data'], AccountDto.fromJson);
 
-      List<AccountDto> accountDto;
-      if (data is Map<String, dynamic>) {
-        accountDto = [AccountDto.fromJson(data)];
-      } else if (data is List) {
-        accountDto = data
-            .map((jsonItem) => AccountDto.fromJson(jsonItem as Map<String, dynamic>))
-            .toList();
-      } else {
-        accountDto = [];
-      }
-
-      if (accountDto.isEmpty) {
-        return [];
-      }
-
-      return accountDto
-          .map((dto) => dto.toModel())
-          .toList();
-    } on OdooException catch (e) {
-      print('Error de Odoo al obtener cuentas bancarias: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Error inesperado al obtener cuentas bancarias: $e');
-      throw OdooException('Ocurrió un error inesperado al procesar las cuentas bancarias.');
-    }
+          return dtos.map((dto) => dto.toModel()).toList();
+        },
+        errorContext: 'obtención de cuentas de banco'
+    );
   }
 
   @override
   Future<bool> deleteAccount(int partnerId, int accountId) async {
-    final String url = '${OdooEndpoints.accountBase}/${partnerId}';
-    final body = {
-      'bank_id': accountId,
-      'action': 'unlink'
-    };
 
-    try {
-      final response = await _sendJsonRequest(
-          'PUT',
-          url,
-          bodyParams: body);
+    return _handleRequest(() async {
+          final url = '${OdooEndpoints.accountBase}/$partnerId';
+          final body = {
+            'bank_id': accountId,
+            'action': 'unlink'
+          };
 
-      if (response != null && response['success'] == true) {
-        return true;
-      } else {
-        final serverMessage = response?['message'] ?? 'No success flag in response.';
-        throw OdooException(serverMessage);
-      }
-    } on OdooException catch (e) {
-      print('Error de Odoo al desasociar cuenta bancaria: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Error inesperado al desasociar cuenta bancaria: $e');
-      throw OdooException('An unexpected error occurred while unlinking the account.');
-    }
+          final response = await _sendJsonRequest('PUT', url, bodyParams: body);
+
+          if (response != null && response['success'] == true) {
+            return true;
+          } else {
+            throw OdooException(response['message'] ?? 'El servidor no confirmó la operación.');
+          }
+        },
+        errorContext: 'desasociar cuenta bancaria');
   }
 
   @override
   Future<bool> linkAccount(int partnerId, int accountId) async {
-    final String url = '${OdooEndpoints.accountBase}/${partnerId}';
-    final body = {
-      'bank_id': accountId,
-      'action': 'link'
-    };
 
-    try {
-      final response = await _sendJsonRequest(
-          'PUT',
-          url,
-          bodyParams: body);
+    return _handleRequest(() async {
+          final url = '${OdooEndpoints.accountBase}/$partnerId';
+          final body = {
+            'bank_id': accountId,
+            'action': 'link'
+          };
 
-      if (response != null && response['success'] == true) {
-        return true;
-      } else {
-        final serverMessage = response?['message'] ?? 'No success flag in response.';
-        throw OdooException(serverMessage);
-      }
-    } on OdooException catch (e) {
-      print('Error de Odoo al asociar cuenta bancaria: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Error inesperado al asociar cuenta bancaria: $e');
-      throw OdooException('An unexpected error occurred while linking the account.');
-    }
+          final response = await _sendJsonRequest('PUT', url, bodyParams: body);
+
+          if (response != null && response['success'] == true) {
+            return true;
+          } else {
+            throw OdooException(response['message'] ?? 'El servidor no confirmó la operación.');
+          }
+        },
+        errorContext: 'asociar cuenta bancaria');
   }
+
+// Bank Accounts
 
   @override
   Future<List<BankAccount>> getBankAccounts() async {
-    try {
-      final dynamic response = await _sendJsonRequest(
-          'GET',
-          OdooEndpoints.bankAccountBase);
 
-      final dynamic data = response['data'];
+    return _handleRequest(() async {
+          final response = await _sendJsonRequest(
+              'GET', OdooEndpoints.bankAccountBase);
+          final dtos = _parseResponseToList(response['data'], BankAccountDto.fromJson);
 
-      List<BankAccountDto> accountDto;
-      if (data is Map<String, dynamic>) {
-        accountDto = [BankAccountDto.fromJson(data)];
-      } else if (data is List) {
-        accountDto = data
-            .map((jsonItem) => BankAccountDto.fromJson(jsonItem as Map<String, dynamic>))
-            .toList();
-      } else {
-        accountDto = [];
-      }
-
-      return accountDto
-          .map((dto) => dto.toModel())
-          .toList();
-    } on OdooException catch (e) {
-      print('Error de Odoo al obtener cuentas bancarias permitidas: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Error inesperado al obtener cuentas bancarias permitidas: $e');
-      throw OdooException('Ocurrió un error inesperado al procesar las cuentas bancarias permitidas.');
-    }
+          return dtos.map((dto) => dto.toModel()).toList();
+        },
+        errorContext: 'obtención de cuentas de banco'
+    );
   }
 
   @override
   Future<BankAccount> addBankAccount(BankAccount bankAccount) async {
-    final body = {
-      'params': {
-        'data': bankAccount.toMap()
-      }
-    };
 
-    try {
-      final response = await _sendJsonRequest(
-          'POST',
-          OdooEndpoints.bankAccountBase,
-          bodyParams: body);
+    return _handleRequest(() async {
+          final body = {
+            'params': {
+              'data': bankAccount.toMap()
+            }
+          };
+          final response = await _sendJsonRequest(
+              'POST', OdooEndpoints.bankAccountBase, bodyParams: body);
+          final data = response['data'];
 
-      final dynamic data = response['data'];
-
-      if (data is Map<String, dynamic>) {
-        final res = BankAccount.fromJson(data);
-        return res;
-      } else {
-        final serverMessage = response?['message'] ?? 'The server returned an unexpected response after creating bank account.';
-        throw OdooException(serverMessage);
-      }
-    }on OdooException catch (e) {
-      print('OdooException while adding bank account: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Unexpected error while adding bank account: $e');
-      throw OdooException('Ocurrió un error inesperado mientras se creaba una cuenta bancaria.');
-    }
+          if (data is Map<String, dynamic>) {
+            return BankAccount.fromJson(data);
+          } else {
+            throw OdooException(response['message'] ?? 'El servidor devolvió una respuesta inesperada.');
+          }
+        },
+        errorContext: 'creación de cuenta de banco');
   }
 
   @override
   Future<bool> deleteBankAccount(int bankAccountId) async {
-    final String url = '${OdooEndpoints.bankAccountBase}/${bankAccountId}';
 
-    try {
-      final dynamic response = await _sendJsonRequest(
-          'DELETE',
-          url);
+    return _handleRequest(() async {
+          final url = '${OdooEndpoints.bankAccountBase}/$bankAccountId';
 
-      if (response != null && response['success'] == true) {
-        return true;
-      } else {
-        final serverMessage = response?['message'] ?? 'The server did not confirm the bank account deletion.';
-        throw OdooException(serverMessage);
-      }
-    } on OdooException catch (e) {
-      print('OdooException while deleting bank account with ID $bankAccountId: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Unexpected error while deleting bank account with ID $bankAccountId: $e');
-      throw OdooException('An unexpected error occurred while deleting the bank account.');
-    }
+          final response = await _sendJsonRequest('DELETE', url);
+
+          if (response != null && response['success'] == true) {
+            return true;
+          } else {
+            throw OdooException(response['message'] ?? 'El servidor no confirmó la operación.');
+          }
+        },
+        errorContext: 'eliminar cuenta bancaria');
   }
 
   @override
   Future<bool> updateBankAccount(BankAccount bankAccount) async {
-    final String url = '${OdooEndpoints.bankAccountBase}/${bankAccount.id}';
-    final body = {
-      'params': {
-        'data': bankAccount.toMap()
-      }
-    };
 
-    try {
-      final response = await _sendJsonRequest(
-          'PUT',
-          url,
-          bodyParams: body);
+    return _handleRequest(() async {
+          final url = '${OdooEndpoints.bankAccountBase}/${bankAccount.id}';
+          final body = {
+            'params': {
+              'data': bankAccount.toMap()
+            }
+          };
 
-      if (response != null && response['success'] == true) {
-        return true;
-      } else {
-        final serverMessage = response?['message'] ?? 'The server did not confirm the bank account update.';
-        throw OdooException(serverMessage);
-      }
-    } on OdooException catch (e) {
-      print('OdooException while changing bank account with ID ${bankAccount.id}: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Unexpected error while changing bank account with ID ${bankAccount.id}: $e');
-      throw OdooException('An unexpected error occurred while changing the bank account value!');
-    }
+          final response = await _sendJsonRequest('PUT', url, bodyParams: body);
+
+          if (response != null && response['success'] == true) {
+            return true;
+          } else {
+            throw OdooException(response['message'] ?? 'El servidor no confirmó la operación.');
+          }
+        },
+        errorContext: 'actualizar cuenta bancaria');
   }
+
+// Banks
 
   @override
   Future<List<Bank>> getBanks() async {
-    try {
-      final dynamic response = await _sendJsonRequest(
-          'GET',
-          OdooEndpoints.bankBase);
 
-      final dynamic data = response['data'];
+    return _handleRequest(() async {
+          final response = await _sendJsonRequest(
+              'GET', OdooEndpoints.bankBase);
+          final dtos = _parseResponseToList(response['data'], BankDto.fromJson);
 
-      List<BankDto> bankDto;
-      if (data is Map<String, dynamic>) {
-        bankDto = [BankDto.fromJson(data)];
-      } else if (data is List) {
-        bankDto = data
-            .map((jsonItem) => BankDto.fromJson(jsonItem as Map<String, dynamic>))
-            .toList();
-      } else {
-        bankDto = [];
-      }
-
-      return bankDto
-          .map((dto) => dto.toModel())
-          .toList();
-    } on OdooException catch (e) {
-      print('Error de Odoo al obtener bancos: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Error inesperado al obtener bancos: $e');
-      throw OdooException('Ocurrió un error inesperado al procesar los bancos.');
-    }
+          return dtos.map((dto) => dto.toModel()).toList();
+        },
+        errorContext: 'obtención de bancos'
+    );
   }
 
   @override
   Future<Bank> addBank(Bank bank) async {
-    final body = {
-      'params': {
-        'data': bank.toMap()
-      }
-    };
 
-    try {
-      final response = await _sendJsonRequest(
-          'POST',
-          OdooEndpoints.bankBase,
-          bodyParams: body);
+    return _handleRequest(() async {
+          final body = {
+            'params': {
+              'data': bank.toMap()
+            }
+          };
+          final response = await _sendJsonRequest(
+              'POST', OdooEndpoints.bankBase, bodyParams: body);
+          final data = response['data'];
 
-      final dynamic data = response['data'];
-
-      if (data is Map<String, dynamic>) {
-        return Bank.fromJson(data);
-      } else {
-        final serverMessage = response?['message'] ?? 'The server returned an unexpected response after creating the bank.';
-        throw OdooException(serverMessage);
-      }
-    }on OdooException catch (e) {
-      print('OdooException while adding bank: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Unexpected error while adding bank: $e');
-      throw OdooException('An unexpected error occurred while adding the new bank.');
-    }
+          if (data is Map<String, dynamic>) {
+            return Bank.fromJson(data);
+          } else {
+            throw OdooException(response['message'] ?? 'El servidor devolvió una respuesta inesperada.');
+          }
+        },
+        errorContext: 'creación de banco');
   }
 
   @override
   Future<bool> updateBank(Bank bank) async {
-    final String url = '${OdooEndpoints.bankBase}/${bank.id}';
-    final body = {
-      'params': {
-        'data': bank.toMap()
-      }
-    };
 
-    try {
-      final dynamic response = await _sendJsonRequest(
-          'PUT',
-          url,
-          bodyParams: body);
+    return _handleRequest(() async {
+          final url = '${OdooEndpoints.bankBase}/${bank.id}';
+          final body = {
+            'params': {
+              'data': bank.toMap()
+            }
+          };
 
-      if (response != null && response['success'] == true) {
-        return true;
-      } else {
-        final serverMessage = response?['message'] ?? 'The server did not confirm the bank update.';
-        throw OdooException(serverMessage);
-      }
-    } on OdooException catch (e) {
-      print('OdooException while changing bank with ID ${bank.id}: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Unexpected error while changing bank with ID ${bank.id}: $e');
-      throw OdooException('An unexpected error occurred while changing the bank!');
-    }
+          final response = await _sendJsonRequest('PUT', url, bodyParams: body);
+
+          if (response != null && response['success'] == true) {
+            return true;
+          } else {
+            throw OdooException(response['message'] ?? 'El servidor no confirmó la operación.');
+          }
+        },
+        errorContext: 'actualizar banco');
   }
 
-// User & Settings
+// User
 
   @override
   Future<List<User>> getDeliveries() async {
-    try {
-      final dynamic response = await _sendJsonRequest(
-          'GET',
-          OdooEndpoints.usersDeliveries);
 
-      final dynamic data = response['data'];
+    return _handleRequest(() async {
+          final response = await _sendJsonRequest(
+              'GET', OdooEndpoints.usersDeliveries);
+          final dtos = _parseResponseToList(response['data'], UserDto.fromJson);
 
-      List<UserDto> userDto;
-      if (data is Map<String, dynamic>) {
-        userDto = [UserDto.fromJson(data)];
-      } else if (data is List) {
-        userDto = data
-            .map((jsonItem) => UserDto.fromJson(jsonItem as Map<String, dynamic>))
-            .toList();
-      } else {
-        userDto = [];
-      }
-
-      return userDto
-          .map((dto) => dto.toModel())
-          .toList();
-    } on OdooException catch (e) {
-      print('Error de Odoo al obtener usuarios: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Error inesperado al obtener usuarios: $e');
-      throw OdooException('Ocurrió un error inesperado al procesar los usuarios.');
-    }
+          return dtos.map((dto) => dto.toModel()).toList();
+        },
+        errorContext: 'obtención de remeseros'
+    );
   }
 
   @override
-  Future<List<User>> getUsers() async {
-    try {
-      final dynamic response = await _sendJsonRequest(
-          'GET',
-          OdooEndpoints.usersBase);
+  Future<List<User>> getUsers({int limit = 20, int offset = 0}) async {
 
-      final dynamic data = response['data'];
+    return _handleRequest(() async {
+          final queryParams = {'limit': limit, 'offset': offset};
 
-      List<UserDto> userDto;
-      if (data is Map<String, dynamic>) {
-        userDto = [UserDto.fromJson(data)];
-      } else if (data is List) {
-        userDto = data
-            .map((jsonItem) => UserDto.fromJson(jsonItem as Map<String, dynamic>))
-            .toList();
-      } else {
-        userDto = [];
-      }
+          final response = await _sendJsonRequest(
+              'GET', OdooEndpoints.usersBase, queryParams: queryParams);
 
-      return userDto
-          .map((dto) => dto.toModel())
-          .toList();
-    } on OdooException catch (e) {
-      print('Error de Odoo al obtener usuarios: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Error inesperado al obtener usuarios: $e');
-      throw OdooException('Ocurrió un error inesperado al procesar los usuarios.');
-    }
+          final dtos = _parseResponseToList(response['data'], UserDto.fromJson);
+
+          return dtos.map((dto) => dto.toModel()).toList();
+        },
+        errorContext: 'obtención de usuarios'
+    );
   }
 
   @override
   Future<bool> editUser(User user) async {
-    final String url = '${OdooEndpoints.profile}/${user.id}';
-    Map<String, dynamic> dataMap = user.toMap();
 
-    try {
-      final response = await _sendJsonRequest(
-          'PUT',
-          url,
-          bodyParams: dataMap);
+    return _handleRequest(() async {
+          final url = '${OdooEndpoints.profile}/${user.id}';
+          final body = {
+            'params': {
+              'data': user.toMap()
+            }
+          };
+
+          final response = await _sendJsonRequest('PUT', url, bodyParams: body);
+
+          if (response != null && response['success'] == true) {
+            return true;
+          } else {
+            throw OdooException(response['message'] ?? 'El servidor no confirmó la operación.');
+          }
+        },
+        errorContext: 'actualizar usuario');
+  }
+
+  @override
+  Future<bool> changePassword(int userId, String newPassword) {
+
+    return _handleRequest(() async {
+      final url = '${OdooEndpoints.usersBase}/$userId/password';
+      final body = {
+        'params': {
+          'data': {
+            'password': newPassword
+          }
+        }
+      };
+
+      final response = await _sendJsonRequest('PUT', url, bodyParams: body);
 
       if (response != null && response['success'] == true) {
         return true;
       } else {
-        final serverMessage = response?['message'] ?? 'No success flag in response.';
-        throw OdooException(serverMessage);
+        throw OdooException(response['message'] ?? 'El servidor no confirmó la operación.');
       }
-    } on OdooException catch (e) {
-      print('Error de Odoo al actualizar los datos de la cuenta: ${e.message}');
-      rethrow;
-    } catch (e) {
-      print('Error inesperado al actualizar los datos de la cuenta: $e');
-      throw OdooException('An unexpected error occurred while updating the account preferences.');
-    }
+    },
+        errorContext: 'actualizar contraseña de usuario');
   }
 
   @override
-  Future<Map<String, dynamic>> getParameters() async {
-    try {
-      final response = await _sendJsonRequest(
-        'GET',
-        OdooEndpoints.settingsBase);
+  Future<User> createUser(User user) {
 
-      final dynamic data = response['data'];
+    return _handleRequest(() async {
+      final body = {
+        'params': {
+          'data': user.toMap()
+        }
+      };
+      final response = await _sendJsonRequest(
+          'POST', OdooEndpoints.usersBase, bodyParams: body);
+      final data = response['data'];
 
       if (data is Map<String, dynamic>) {
-        return data;
+        return User.fromJson(data);
       } else {
-        return {};
+        throw OdooException(response['message'] ?? 'El servidor devolvió una respuesta inesperada.');
       }
-    } on OdooException catch (e) {
-      rethrow;
-    } catch (e) {
-      throw OdooException('Ocurrió un error inesperado al obtener la configuración.');
-    }
+    },
+        errorContext: 'creación de usuario');
+  }
+
+  @override
+  Future<bool> deleteUser(int userId) {
+
+    return _handleRequest(() async {
+          final url = '${OdooEndpoints.usersBase}/$userId';
+
+          final response = await _sendJsonRequest('DELETE', url);
+
+          if (response != null && response['success'] == true) {
+            return true;
+          } else {
+            throw OdooException(response['message'] ?? 'El servidor no confirmó la operación.');
+          }
+        },
+        errorContext: 'eliminar usuario');
+  }
+
+// Settings
+
+  @override
+  Future<Map<String, dynamic>> getParameters() async {
+
+    return _handleRequest(() async {
+          final response = await _sendJsonRequest(
+              'GET', OdooEndpoints.settingsBase);
+
+          if (response['data'] is Map<String, dynamic>) {
+            return response['data'];
+          } else {
+            return {};
+          }
+        },
+        errorContext: 'obtención de parametros'
+    );
   }
 
   @override
   Future<bool> updateParameters(Company company) async {
-    final body = {
-      'params': {
-        'data': company.toMap()
-      }
-    };
 
-    try {
-      final response = await _sendJsonRequest(
-        'PUT',
-        OdooEndpoints.settingsBase,
-        bodyParams: body);
+    return _handleRequest(() async {
+          final body = {
+            'params': {
+              'data': company.toMap()
+            }
+          };
 
-      if (response['success'] == true) {
-        return true;
-      } else {
-        final serverMessage = response['message'] ?? 'El servidor no confirmó la actualización.';
-        throw OdooException(serverMessage);
-      }
-    } on OdooException catch (e) {
-      rethrow;
-    } catch (e) {
-      throw OdooException('Ocurrió un error inesperado al actualizar la configuración.');
-    }
+          final response = await _sendJsonRequest(
+              'PUT', OdooEndpoints.settingsBase, bodyParams: body);
+
+          if (response != null && response['success'] == true) {
+            return true;
+          } else {
+            throw OdooException(response['message'] ?? 'El servidor no confirmó la operación.');
+          }
+        },
+        errorContext: 'actualizar parametros');
   }
 
 }

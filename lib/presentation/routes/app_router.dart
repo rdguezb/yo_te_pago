@@ -12,6 +12,8 @@ import 'package:yo_te_pago/presentation/screens/loading_screen.dart';
 import 'package:yo_te_pago/presentation/screens/register_screen.dart';
 import 'package:yo_te_pago/presentation/views/settings/bank_account_views.dart';
 import 'package:yo_te_pago/presentation/views/settings/banks_views.dart';
+import 'package:yo_te_pago/presentation/views/settings/currencies_views.dart';
+import 'package:yo_te_pago/presentation/views/settings/users_view.dart';
 import 'package:yo_te_pago/presentation/widgets/forms/balance_form_views.dart';
 import 'package:yo_te_pago/presentation/widgets/forms/account_form_views.dart';
 import 'package:yo_te_pago/presentation/widgets/forms/settings/bank_account_form_views.dart';
@@ -119,6 +121,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return BankAccountFormView(bankAccount: bankAccount);
         },
       ),
+      GoRoute(
+        name: AppRoutes.currency,
+        path: AppRoutes.currenciesUrl,
+        builder: (context, state) => const CurrenciesView(),
+      ),
 
       GoRoute(
         name: AppRoutes.password,
@@ -128,12 +135,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         name: AppRoutes.users,
         path: AppRoutes.usersUrl,
-        builder: (context, state) => const PlaceholderScreen(title: 'Usuarios'),
-      ),
-      GoRoute(
-        name: AppRoutes.currency,
-        path: AppRoutes.currenciesUrl,
-        builder: (context, state) => const PlaceholderScreen(title: 'Monedas'),
+        builder: (context, state) => const UsersView(),
       ),
       GoRoute(
         name: AppRoutes.appUpdate,

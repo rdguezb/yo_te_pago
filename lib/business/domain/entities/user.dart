@@ -1,7 +1,7 @@
 class User {
 
   int? id;
-  final int userId;
+  final int partnerId;
   final String name;
   final String role;
   final String login;
@@ -9,7 +9,7 @@ class User {
 
   User({
     this.id,
-    required this.userId,
+    required this.partnerId,
     required this.name,
     required this.role,
     required this.login,
@@ -20,7 +20,7 @@ class User {
 
     return User(
         id: (json['id'] as int?) ?? 0,
-        userId: (json['user_id'] as int?) ?? 0,
+        partnerId: (json['partner_id'] as int?) ?? 0,
         name: json['name'] as String,
         role: json['role'] as String,
         login: json['login'] as String,
@@ -29,7 +29,7 @@ class User {
 
   User copyWith({
     int? id,
-    int? userId,
+    int? partnerId,
     String? name,
     String? role,
     String? login,
@@ -38,7 +38,7 @@ class User {
 
     return User(
         id: id ?? this.id,
-        userId: userId ?? this.userId,
+        partnerId: partnerId ?? this.partnerId,
         name: name ?? this.name,
         role: role ?? this.role,
         login: login ?? this.login,
@@ -48,7 +48,6 @@ class User {
   Map<String, dynamic> toMap() {
 
     return {
-      'user_id': userId,
       'name': name,
       'role': role,
       'login': login,
