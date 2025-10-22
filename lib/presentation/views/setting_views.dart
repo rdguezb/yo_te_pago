@@ -18,7 +18,7 @@ class SettingsView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = Theme.of(context).colorScheme;
     final authState = ref.watch(authNotifierProvider);
-    final userRole = authState.session?.role;
+    final userRole = authState.session?.user.roleName;
 
     final availableOptions = allSettingOptions
         .where((option) => option.isVisibleFor(userRole)).toList();

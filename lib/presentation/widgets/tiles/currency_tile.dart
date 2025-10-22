@@ -77,8 +77,10 @@ class CurrencyTile extends ConsumerWidget {
             controller: newRateController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(
-              hintText: 'Nueva tasa',
-            ),
+                hintText: 'Ej. 10.50',
+                labelText: 'Tasa',
+                border: OutlineInputBorder()
+            )
           ),
           actions: [
             TextButton(

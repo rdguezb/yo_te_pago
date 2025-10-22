@@ -55,4 +55,26 @@ class FormValidators {
     return null;
   }
 
+  static String? validatePassword(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return AppValidationMessages.required;
+    }
+    if (value.length < 6) {
+      return AppValidationMessages.passwordTooShort;
+    }
+
+    return null;
+  }
+
+  static String? validateConfirmPassword(String? value, String password) {
+    if (value == null || value.trim().isEmpty) {
+      return AppValidationMessages.required;
+    }
+    if (value != password) {
+      return AppValidationMessages.passwordMismatch;
+    }
+
+    return null;
+  }
+
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:yo_te_pago/business/domain/entities/user.dart';
+import 'package:yo_te_pago/business/providers/users_provider.dart';
 
 class UserTile extends ConsumerWidget {
 
@@ -32,7 +33,7 @@ class UserTile extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1),
                 subtitle: Text(
-                    '[${user.login}] - ${user.role}',
+                    '[${user.login}] - ${user.roleName}',
                     style: TextStyle(
                         color: colors.onSurface.withAlpha(178),
                         fontSize: 16.0)
@@ -66,9 +67,85 @@ class UserTile extends ConsumerWidget {
     );
   }
 
-  Future<void> _onEdit(BuildContext context, WidgetRef ref) async {}
+  Future<void> _onEdit(BuildContext context, WidgetRef ref) async {
 
-  Future<void> _changePassword(BuildContext context, WidgetRef ref) async {}
+  }
 
-  Future<void> _onDelete(BuildContext context, WidgetRef ref) async {}
+  Future<void> _changePassword(BuildContext context, WidgetRef ref) async {
+    final TextEditingController passwordController = TextEditingController();
+
+    final bool? confirmed = await showDialog<bool>(
+        context: context, builder: (BuildContext dialogContext) {
+      return AlertDialog(
+          title: const Text('Cambiar Contraseña'),
+          content: TextField(
+              controller: passwordController,
+              autofocus: true,
+              keyboardType: TextInputType.text,
+              obscureText: true,
+              decoration: const InputDecoration(
+                  labelText: 'Contraseña',
+                  border: OutlineInputBorder()
+              ),
+              onSubmitted: (value) {
+                Navigator.of(context).pop(value);
+              }
+          ),
+          actions: <Widget>[
+            TextButton(
+                child: const Text('Cancelar'),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(false);
+                }
+            ),
+            FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                ),
+                child: const Text('Aceptar'),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(true);
+                }
+            )
+          ]
+      );
+    }
+    );
+
+    if (confirmed == true && passwordController.text.trim().isNotEmpty) {
+      final password = passwordController.text.trim();
+      await ref.read(usersProvider.notifier).changeUserPassword(user.id!, password);
+    }
+  }
+
+  Future<void> _onDelete(BuildContext context, WidgetRef ref) async {
+    final bool? confirmed = await showDialog<bool>(
+        context: context, builder: (BuildContext dialogContext) {
+      return AlertDialog(
+          title: const Text('Confirmar Eliminación'),
+          content: Text('¿Estás seguro de que deseas eliminar el usuario "${user.name}"? Esta acción no se puede deshacer.'),
+          actions: <Widget>[
+            TextButton(
+                child: const Text('Cancelar'),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(false);
+                }
+            ),
+            FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                ),
+                child: const Text('Eliminar'),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(true);
+                }
+            )
+          ]
+      );
+    });
+
+    if (confirmed == true) {
+      await ref.read(usersProvider.notifier).deleteUser(user.id!);
+    }
+  }
 }

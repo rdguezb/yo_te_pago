@@ -12,6 +12,7 @@ import 'package:yo_te_pago/business/domain/entities/company.dart';
 import 'package:yo_te_pago/business/domain/entities/currency.dart';
 import 'package:yo_te_pago/business/domain/entities/rate.dart';
 import 'package:yo_te_pago/business/domain/entities/remittance.dart';
+import 'package:yo_te_pago/business/domain/entities/role.dart';
 import 'package:yo_te_pago/business/domain/entities/user.dart';
 import 'package:yo_te_pago/business/domain/services/ibase_service.dart';
 import 'package:yo_te_pago/business/exceptions/odoo_exceptions.dart';
@@ -19,6 +20,7 @@ import 'package:yo_te_pago/infrastructure/models/dtos/account_dto.dart';
 import 'package:yo_te_pago/infrastructure/models/dtos/bank_account_dto.dart';
 import 'package:yo_te_pago/infrastructure/models/dtos/bank_dto.dart';
 import 'package:yo_te_pago/infrastructure/models/dtos/currency_dto.dart';
+import 'package:yo_te_pago/infrastructure/models/dtos/role_dto.dart';
 import 'package:yo_te_pago/infrastructure/models/dtos/user_dto.dart';
 import 'package:yo_te_pago/infrastructure/models/odoo_auth_result.dart';
 import 'package:yo_te_pago/infrastructure/models/dtos/balance_dto.dart';
@@ -40,8 +42,7 @@ class OdooService extends IBaseService {
   String get baseUrl => _baseUrl;
   String get databaseName => _databaseName;
   OdooAuth get odooSessionInfo => _authResult!;
-  String get partnerName => _authResult!.partnerName;
-  String? get userRole => _authResult!.role;
+  User get user => _authResult!.user;
 
   Future<dynamic> _sendJsonRequest(String method, String path, {Map<String, dynamic>? bodyParams, Map<String, dynamic>? queryParams}) async {
     if (_authResult == null || _authResult!.sessionId == null) {
@@ -56,12 +57,12 @@ class OdooService extends IBaseService {
     }
 
     Map<String, dynamic>? finalBodyParams = bodyParams;
-    if (finalBodyParams != null && finalBodyParams.containsKey('jsonrpc') && finalBodyParams['jsonrpc'] == '2.0' && _authResult != null && _authResult!.companyId != 0) {
+    if (finalBodyParams != null && finalBodyParams.containsKey('jsonrpc') && finalBodyParams['jsonrpc'] == '2.0' && _authResult != null && _authResult!.company.id != 0) {
       try {
         Map<String, dynamic> params = Map<String, dynamic>.from(finalBodyParams['params'] ?? {});
         Map<String, dynamic> kwargs = Map<String, dynamic>.from(params['kwargs'] ?? {});
         Map<String, dynamic> context = Map<String, dynamic>.from(kwargs['context'] ?? {});
-        context['company_id'] = _authResult!.companyId;
+        context['company_id'] = _authResult!.company.id;
         kwargs['context'] = context;
         params['kwargs'] = kwargs;
         finalBodyParams['params'] = params;
@@ -154,8 +155,8 @@ class OdooService extends IBaseService {
 
   Future<bool> authenticate(String login, String password) async {
     try {
-      print('--- DEBUG: INTENTANDO CONECTAR A http://10.0.2.2:8069 ---');
       final debugUri = Uri.parse('http://10.0.2.2:8069/web/database/list');
+      print('--- DEBUG: INTENTANDO CONECTAR A http://10.0.2.2:8069 ---');
       final debugResponse = await http.post(
         debugUri,
         headers: {'Content-Type': 'application/json'},
@@ -210,6 +211,9 @@ class OdooService extends IBaseService {
             break;
           }
         }
+
+        print('--- SESSION ID: $sessionId ---');
+        print('--- RESULT: $result ---');
 
         if (result != null) {
           _authResult = OdooAuth.fromJson(result, sessionId: sessionId);
@@ -540,7 +544,7 @@ class OdooService extends IBaseService {
     );
   }
 
-// Accounts, Bank Accounts
+// Accounts
 
   @override
   Future<List<Account>> getAccounts() async {
@@ -548,6 +552,7 @@ class OdooService extends IBaseService {
     return _handleRequest(() async {
           final response = await _sendJsonRequest(
               'GET', OdooEndpoints.accountBase);
+
           final dtos = _parseResponseToList(response['data'], AccountDto.fromJson);
 
           return dtos.map((dto) => dto.toModel()).toList();
@@ -735,7 +740,7 @@ class OdooService extends IBaseService {
         errorContext: 'actualizar banco');
   }
 
-// User
+// User & Roles
 
   @override
   Future<List<User>> getDeliveries() async {
@@ -791,7 +796,7 @@ class OdooService extends IBaseService {
   }
 
   @override
-  Future<bool> changePassword(int userId, String newPassword) {
+  Future<bool> adminSetUserPassword(int userId, String newPassword) {
 
     return _handleRequest(() async {
       final url = '${OdooEndpoints.usersBase}/$userId/password';
@@ -815,12 +820,34 @@ class OdooService extends IBaseService {
   }
 
   @override
-  Future<User> createUser(User user) {
+  Future<bool> userChangeOwnPassword({required String oldPassword, required String newPassword}) {
+    return _handleRequest(() async {
+          const url = OdooEndpoints.profileChangePassword;
+          final body = {
+            'params': {
+              'old_password': oldPassword,
+              'new_password': newPassword,
+            }
+          };
+
+          final response = await _sendJsonRequest('POST', url, bodyParams: body);
+
+          if (response != null && response['success'] == true) {
+            return true;
+          } else {
+            throw OdooException(response['message'] ?? 'El servidor no pudo cambiar la contraseña.');
+          }
+        },
+        errorContext: 'cambio de contraseña propia');
+  }
+
+  @override
+  Future<User> createUser(Map<String, dynamic> user) {
 
     return _handleRequest(() async {
       final body = {
         'params': {
-          'data': user.toMap()
+          'data': user
         }
       };
       final response = await _sendJsonRequest(
@@ -851,6 +878,25 @@ class OdooService extends IBaseService {
           }
         },
         errorContext: 'eliminar usuario');
+  }
+
+   @override
+  Future<List<Role>> getRoles() {
+
+    return _handleRequest(() async {
+
+      final response = await _sendJsonRequest(
+          'GET', OdooEndpoints.roleBase);
+
+      print('----- $response');
+
+
+      final dtos = _parseResponseToList(response['data'], RoleDto.fromJson);
+
+      return dtos.map((dto) => dto.toModel()).toList();
+    },
+        errorContext: 'obtención de roles'
+    );
   }
 
 // Settings
@@ -894,4 +940,4 @@ class OdooService extends IBaseService {
         errorContext: 'actualizar parametros');
   }
 
-}
+ }

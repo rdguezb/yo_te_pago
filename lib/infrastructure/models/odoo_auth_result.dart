@@ -1,81 +1,70 @@
 import 'package:yo_te_pago/business/domain/entities/company.dart';
+import 'package:yo_te_pago/business/domain/entities/user.dart';
 
 
 class OdooAuth {
-  final int userId;
-  final String userName;
-  final int partnerId;
-  final String partnerName;
-  final int companyId;
+  
+  final User user;
+  final Company company;
   final List<Company> allowedCompanies;
   final String? sessionId;
   final String? serverURL;
   final String? databaseName;
-  final String? role;
-  final String? email;
 
   OdooAuth({
-    required this.userId,
-    required this.userName,
-    required this.partnerId,
-    required this.partnerName,
-    required this.companyId,
+    required this.user,
+    required this.company,
     required this.allowedCompanies,
-    required this.role,
     this.serverURL,
     this.databaseName,
-    this.email,
     this.sessionId
   });
 
   factory OdooAuth.fromJson(Map<String, dynamic> json, {String? sessionId}) {
-    final id = json['company_id'] as int;
+    final currentCompanyId = json['company_id'] as int;
     List<Company> companies = [];
-    if (json.containsKey('user_companies') && json['user_companies'] is Map<String, dynamic>) {
-      final userCompaniesData = json['user_companies'] as Map<String, dynamic>;
-      if (userCompaniesData.containsKey('allowed_companies') && userCompaniesData['allowed_companies'] is Map<String, dynamic>) {
-        final allowedCompaniesMap = userCompaniesData['allowed_companies'] as Map<String, dynamic>;
-        allowedCompaniesMap.forEach((key, value) {
-          if (value is Map<String, dynamic>) {
-            companies.add(Company.fromJson(value));
-          }
-        });
-      }
+
+    if (json['user_companies']?['allowed_companies'] is Map<String, dynamic>) {
+      final allowedCompaniesMap = json['user_companies']['allowed_companies'] as Map<String, dynamic>;
+      companies = allowedCompaniesMap.values
+          .where((value) => value is Map<String, dynamic>)
+          .map((value) => Company.fromJson(value as Map<String, dynamic>))
+          .toList();
     }
 
+    final Company currentCompany = companies.firstWhere(
+      (c) => c.id == currentCompanyId,
+      orElse: () => throw Exception('Error de datos: La compañía actual no fue encontrada en la lista de compañías permitidas.'),
+    );
+
+    final user = User.fromJson(json);
+
     return OdooAuth(
-      userId: json['uid'] as int,
-      userName: json['username'] as String,
-      partnerId: json['partner_id'] as int,
-      partnerName: json['name'] as String,
-      role: (json['role'] as String?) ?? '',
-      email: (json['email'] as String?) ?? '',
-      companyId: id,
+      user: user,
+      company: currentCompany,
       allowedCompanies: companies,
-      sessionId: sessionId
+      sessionId: sessionId,
+      serverURL: json['web.base.url'] as String?,
+      databaseName: json['db'] as String?,
     );
   }
 
   OdooAuth copyWith({
-    String? userName,
-    String? partnerName,
-    int? companyId,
-    String? email,
-    List<Company>? allowedCompanies
+    User? user,
+    Company? company,
+    List<Company>? allowedCompanies,
+    String? sessionId,
+    String? serverURL,
+    String? databaseName,
   }) {
 
     return OdooAuth(
-      userId: userId,
-      userName: userName ?? this.userName,
-      partnerId: partnerId,
-      partnerName: partnerName ?? this.partnerName,
-      companyId: companyId ?? this.companyId,
+      user: user ?? this.user,
+      company: company ?? this.company,
       allowedCompanies: allowedCompanies ?? this.allowedCompanies,
-      role: role,
-      email: email ?? this.email,
-      sessionId: sessionId,
-      serverURL: serverURL,
-      databaseName: databaseName
+      sessionId: sessionId ?? this.sessionId,
+      serverURL: serverURL ?? this.serverURL,
+      databaseName: databaseName ?? this.databaseName,
     );
   }
 

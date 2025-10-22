@@ -44,7 +44,7 @@ class DashboardViewState extends ConsumerState<DashboardView> {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final authState = ref.watch(authNotifierProvider);
     final remittancesState = ref.watch(remittanceProvider);
-    final userRole = authState.session?.role;
+    final userRole = authState.session?.user.roleName;
     final filteredRemittances = remittancesState.filteredRemittances;
 
     ref.listen(remittanceProvider, (previous, next) {

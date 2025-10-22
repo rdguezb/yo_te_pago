@@ -2,6 +2,7 @@ abstract class AppFormLabels {
 
   static const username = 'Usuario';
   static const password = 'Contraseña';
+  static const confirmPassword = 'Confirmar contraseña';
   static const customer = 'Nombre del Cliente';
   static const amount = 'Importe';
   static const currency = 'Moneda de Pago';
@@ -22,6 +23,10 @@ abstract class AppFormLabels {
   static const hintNameSearch = 'Buscar por nombre';
   static const bank = 'Banco';
   static const bankSelect = 'Seleccione un Banco';
+  static const role = 'Rol';
+  static const roleSelect = 'Seleccione un Rol';
+  static const currentPassword = 'Contraseña actual';
+  static const newPassword = 'Nueva contraseña';
 
 }
 

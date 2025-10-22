@@ -18,7 +18,7 @@ class CustomAppBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final styles = Theme.of(context).textTheme;
     final authState = ref.watch(authNotifierProvider);
-    final userName = authState.session?.partnerName ?? 'Invitado';
+    final userName = authState.session?.user.name ?? 'Invitado';
     final packageInfoAsync = ref.watch(packageInfoProvider);
 
     return Padding(

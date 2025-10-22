@@ -63,14 +63,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       state = state.copyWith(
           isLoading: false, errorMessage: 'Error: No se encontró la sesión del usuario.');
     } else {
-      final user = User(
-          id: session.userId,
-          partnerId: session.partnerId,
-          name: session.partnerName,
-          role: session.role!,
-          email: session.email,
-          login: session.userName
-      );
+      final user = session.user;
       state = state.copyWith(isLoading: false, user: user);
     }
   }
@@ -97,6 +90,28 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     } catch (e) {
       state = state.copyWith(
           isLoading: false, errorMessage: 'Ocurrió un error inesperado al editar el perfil.');
+    }
+  }
+  
+  Future<void> changeOwnPassword({required String oldPassword, required String newPassword}) async {
+    if (!_isSessionValid()) return;
+
+    state = state.copyWith(isLoading: true, lastUpdateSuccess: false, clearError: true);
+
+    try {
+      final success = await _odooService.userChangeOwnPassword(
+        oldPassword: oldPassword,
+        newPassword: newPassword,
+      );
+      if (success) {
+        state = state.copyWith(isLoading: false, lastUpdateSuccess: true);
+      } else {
+        state = state.copyWith(isLoading: false, errorMessage: 'No se pudo cambiar la contraseña.');
+      }
+    } on OdooException catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: e.message);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: 'Ocurrió un error inesperado.');
     }
   }
 

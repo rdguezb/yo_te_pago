@@ -6,6 +6,7 @@ import 'package:yo_te_pago/business/config/constants/app_routes.dart';
 import 'package:yo_te_pago/business/domain/entities/bank.dart';
 import 'package:yo_te_pago/business/domain/entities/bank_account.dart';
 import 'package:yo_te_pago/business/domain/entities/remittance.dart';
+import 'package:yo_te_pago/business/domain/entities/user.dart';
 import 'package:yo_te_pago/business/providers/auth_notifier.dart';
 import 'package:yo_te_pago/presentation/screens/home_screen.dart';
 import 'package:yo_te_pago/presentation/screens/loading_screen.dart';
@@ -13,6 +14,7 @@ import 'package:yo_te_pago/presentation/screens/register_screen.dart';
 import 'package:yo_te_pago/presentation/views/settings/bank_account_views.dart';
 import 'package:yo_te_pago/presentation/views/settings/banks_views.dart';
 import 'package:yo_te_pago/presentation/views/settings/currencies_views.dart';
+import 'package:yo_te_pago/presentation/views/settings/password_change_view.dart';
 import 'package:yo_te_pago/presentation/views/settings/users_view.dart';
 import 'package:yo_te_pago/presentation/widgets/forms/balance_form_views.dart';
 import 'package:yo_te_pago/presentation/widgets/forms/account_form_views.dart';
@@ -22,6 +24,7 @@ import 'package:yo_te_pago/presentation/widgets/forms/settings/profile_form_view
 import 'package:yo_te_pago/presentation/widgets/forms/rate_form_views.dart';
 import 'package:yo_te_pago/presentation/widgets/forms/remittance_form_views.dart';
 import 'package:yo_te_pago/presentation/widgets/forms/settings/setting_form_views.dart';
+import 'package:yo_te_pago/presentation/widgets/forms/settings/user_form_view.dart';
 import 'package:yo_te_pago/presentation/widgets/under_construction_views.dart';
 
 
@@ -126,17 +129,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.currenciesUrl,
         builder: (context, state) => const CurrenciesView(),
       ),
-
-      GoRoute(
-        name: AppRoutes.password,
-        path: AppRoutes.passwordUrl,
-        builder: (context, state) => const PlaceholderScreen(title: 'Cambiar Contraseña'),
-      ),
       GoRoute(
         name: AppRoutes.users,
         path: AppRoutes.usersUrl,
         builder: (context, state) => const UsersView(),
       ),
+      GoRoute(
+        name: AppRoutes.userCreate,
+        path: AppRoutes.userCreateUrl,
+        builder: (context, state) {
+          final user = state.extra as User?;
+
+          return UserFormView(user: user);
+        },
+      ),
+      GoRoute(
+        name: AppRoutes.password,
+        path: AppRoutes.passwordUrl,
+        builder: (context, state) => const PasswordChangeView()
+      ),
+
       GoRoute(
         name: AppRoutes.appUpdate,
         path: AppRoutes.appUpdateUrl,

@@ -79,7 +79,7 @@ class _UsersViewState extends ConsumerState<UsersView> {
         ),
         floatingActionButton: FloatingActionButton(
             heroTag: 'addUser',
-            onPressed: () => context.pushNamed(AppRoutes.usersCreate),
+            onPressed: () => context.pushNamed(AppRoutes.userCreate),
             tooltip: 'Crear usuario',
             child: const Icon(Icons.add)
         ),

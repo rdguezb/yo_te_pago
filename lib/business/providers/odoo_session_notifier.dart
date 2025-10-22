@@ -30,6 +30,7 @@ class OdooSessionState {
     bool? isLoading,
     String? errorMessage,
   }) {
+
     return OdooSessionState(
         session: session ?? this.session,
         isAuthenticated: isAuthenticated ?? this.isAuthenticated,
@@ -134,16 +135,12 @@ class OdooSessionNotifier extends StateNotifier<OdooSessionState> {
   Future<void> updateLocalSession(User user) async {
     if (state.session == null) return;
 
-    if (user.name == state.session!.partnerName &&
-        user.login == state.session!.userName &&
-        user.email == state.session!.email) {
+    if (user.id == state.session!.user.id) {
       return;
     }
 
     final newSession = state.session!.copyWith(
-      partnerName: user.name,
-      userName: user.login,
-      email: user.email
+      user: user,
     );
 
     try {

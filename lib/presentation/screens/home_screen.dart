@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:yo_te_pago/business/config/constants/app_roles.dart';
 import 'package:yo_te_pago/business/config/constants/app_routes.dart';
+import 'package:yo_te_pago/business/domain/entities/user.dart';
 import 'package:yo_te_pago/business/providers/auth_notifier.dart';
 import 'package:yo_te_pago/business/providers/odoo_session_notifier.dart';
 import 'package:yo_te_pago/presentation/views/account_views.dart';
@@ -68,8 +69,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with AutomaticKeepAlive
   Widget build(BuildContext context) {
     super.build(context);
 
-    final userRole = ref.watch(authNotifierProvider).session?.role;
-    _buildPagesAndItems(userRole);
+    final user = ref.watch(authNotifierProvider).session?.user;
+    _buildPagesAndItems(user!);
 
     if (_pages.isEmpty) {
       return const Scaffold(body: Center(child: Text('No tienes acceso a ninguna vista.')));
@@ -109,7 +110,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with AutomaticKeepAlive
     );
   }
 
-  void _buildPagesAndItems(String? userRole) {
+  void _buildPagesAndItems(User user) {
     final allPages = {
       'dashboard': DashboardView(key: ValueKey('dashboard_page')),
       'reports': ReportView(key: ValueKey('balance_page')),
@@ -140,9 +141,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with AutomaticKeepAlive
     };
 
     List<String> visibleItemKeys = [];
-    if (userRole == ApiRole.manager || userRole == ApiRole.delivery)
+    if (user.roleName == ApiRole.manager || user.roleName == ApiRole.delivery)
       visibleItemKeys = ['dashboard', 'reports', 'rates', 'accounts', 'settings', 'logout'];
-    else if (userRole == ApiRole.user)
+    else if (user.roleName == ApiRole.user)
       visibleItemKeys = ['dashboard', 'settings', 'logout'];
     else
       visibleItemKeys = [];

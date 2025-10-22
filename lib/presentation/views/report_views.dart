@@ -45,7 +45,7 @@ class _ReportViewState extends ConsumerState<ReportView> {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final authState = ref.watch(authNotifierProvider);
     final balancesState = ref.watch(balanceProvider);
-    final userRole = authState.session?.role;
+    final userRole = authState.session?.user.roleName;
     final filteredBalances = balancesState.filteredBalances;
 
     ref.listen(balanceProvider, (previous, next) {

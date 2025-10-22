@@ -9,5 +9,8 @@ abstract class AppValidationMessages {
   static const invalidEmail = 'El correo electrónico no es válido';
   static const selectionRequired = 'Por favor, seleccione una opción';
   static const bankSelection = 'Seleccione un banco';
+  static const passwordTooShort = 'La contraseña debe tener al menos 6 caracteres';
+  static const passwordMismatch = 'Las contraseñas no coinciden';
+
 
 }

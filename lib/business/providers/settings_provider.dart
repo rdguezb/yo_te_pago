@@ -49,7 +49,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     final session = _ref.read(odooSessionNotifierProvider).session;
     if (session != null && session.allowedCompanies.isNotEmpty) {
       try {
-        final initialCompany = session.allowedCompanies.firstWhere((company) => company.id == session.companyId);
+        final initialCompany = session.allowedCompanies.firstWhere((c) => c.id == session.company.id);
         state = state.copyWith(company: initialCompany);
       } catch (e) {
         state = state.copyWith(errorMessage: 'No se pudo encontrar la compañía activa en la sesión.');

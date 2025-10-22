@@ -111,13 +111,13 @@ class UsersNotifier extends StateNotifier<UsersState> {
     await loadNextPage();
   }
 
-  Future<void> createUser(User user) async {
+  Future<void> createUser(Map<String, dynamic> userData) async {
     if (!_isSessionValid()) return;
 
     state = state.copyWith(
         isLoading: true, clearError: true, lastUpdateSuccess: false);
     try {
-      final newUser = await _odooService.createUser(user);
+      final newUser = await _odooService.createUser(userData);
 
       final updatedList = [newUser, ...state.users];
 
@@ -157,6 +157,28 @@ class UsersNotifier extends StateNotifier<UsersState> {
     } catch (e) {
       state = state.copyWith(
           isLoading: false, errorMessage: 'Ocurrió un error inesperado al actualizar el usuario.');
+    }
+  }
+
+  Future<void> changeUserPassword(int userId, String newPassword) async {
+    if (!_isSessionValid()) return;
+
+    state = state.copyWith(
+        isLoading: true, clearError: true, lastUpdateSuccess: false);
+    try {
+      final success = await _odooService.adminSetUserPassword(userId, newPassword);
+
+      if (success) {
+        state = state.copyWith(isLoading: false, lastUpdateSuccess: true);
+      } else {
+        state = state.copyWith(
+            isLoading: false, errorMessage: 'La contraseña no se pudo cambiar en el servidor.');
+      }
+    } on OdooException catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: e.message);
+    } catch (e) {
+      state = state.copyWith(
+          isLoading: false, errorMessage: 'Ocurrió un error inesperado al cambiar la contraseña.');
     }
   }
 

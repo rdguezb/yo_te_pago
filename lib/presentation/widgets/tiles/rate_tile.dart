@@ -100,7 +100,11 @@ class RateTile extends ConsumerWidget {
                 controller: rateController,
                 autofocus: true,
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(hintText: 'Ej. 10.50'),
+                decoration: const InputDecoration(
+                    hintText: 'Ej. 10.50',
+                    labelText: 'Tasa',
+                    border: OutlineInputBorder()
+                ),
                 onSubmitted: (value) {
                   Navigator.of(context).pop(value);
                 }

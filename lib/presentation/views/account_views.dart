@@ -43,7 +43,7 @@ class _AccountViewsState extends ConsumerState<AccountViews> {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final accountState = ref.watch(accountProvider);
     final authState = ref.watch(authNotifierProvider);
-    final userRole = authState.session?.role;
+    final userRole = authState.session?.user.roleName;
     final filteredAccounts = accountState.filteredAccounts;
 
     ref.listen(accountProvider, (previous, next) {

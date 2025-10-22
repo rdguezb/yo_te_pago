@@ -6,7 +6,8 @@ class UserDto extends User {
     required super.id,
     required super.partnerId,
     required super.name,
-    required super.role,
+    required super.roleId,
+    required super.roleName,
     required super.login,
     required super.email
   });
@@ -14,10 +15,11 @@ class UserDto extends User {
   factory UserDto.fromJson(Map<String, dynamic> json) {
 
     return UserDto(
-        id: (json['id'] as int?) ?? 0,
+        id: (json['uid'] as int?) ?? (json['id'] as int?) ?? 0,
         partnerId: (json['partner_id'] as int?) ?? 0,
         name: json['name'] as String,
-        role: json['role'] as String,
+        roleId: (json['role_id'] as int?) ?? 0,
+        roleName: json['role_name'] as String,
         login: json['login'] as String,
         email: json['email'] as String);
   }
@@ -28,7 +30,8 @@ class UserDto extends User {
         id: id,
         partnerId: partnerId,
         name: name,
-        role: role,
+        roleId: roleId,
+        roleName: roleName,
         login: login,
         email: email);
   }

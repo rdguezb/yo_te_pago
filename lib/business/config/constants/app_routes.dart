@@ -20,7 +20,7 @@ abstract class AppRoutes {
   static const banksCreate = 'banks-form';
   static const bankAccountCreate = 'bank-accounts-form';
   static const users = 'setting-users';
-  static const usersCreate = 'users-form';
+  static const userCreate = 'users-form';
 
   static const password = 'setting-password';
   static const appUpdate = 'setting-app-update';
@@ -44,10 +44,11 @@ abstract class AppRoutes {
   static const bankCreateUrl = '/banks/create';
   static const bankAccountsUrl = '/setting/bank-accounts';
   static const bankAccountCreateUrl = '/bank-accounts/create';
+  static const currenciesUrl = '/setting/currencies';
+  static const usersUrl = '/setting/users';
+  static const userCreateUrl = '/user/create';
 
   static const passwordUrl = '/setting/password';
-  static const usersUrl = '/setting/users';
-  static const currenciesUrl = '/setting/currencies';
   static const appUpdateUrl = '/setting/app-update';
 
 }

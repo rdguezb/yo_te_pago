@@ -14,9 +14,11 @@ abstract class OdooEndpoints {
   static const String usersDeliveries = '/api/delivery';
   static const String usersBase = '/api/users';
   static const String profile = '/api/profile';
+  static const String profileChangePassword = '/api/profile/change-password';
   static const String bankAccountBase = '/api/bank_account';
   static const String settingsBase = '/api/settings';
   static const String bankBase = '/api/bank';
+  static const String roleBase = '/api/roles';
   
   // --- Deprecated or Unused ---
   // static const String getBalances = '/api/v1/balance/total';

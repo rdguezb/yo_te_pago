@@ -43,7 +43,7 @@ class _RatesViewState extends ConsumerState<RatesView> {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final ratesState = ref.watch(rateProvider);
     final authState = ref.watch(authNotifierProvider);
-    final userRole = authState.session?.role;
+    final userRole = authState.session?.user.roleName;
     final filteredRates = ratesState.filteredRates;
 
     ref.listen(rateProvider, (previous, next) {
